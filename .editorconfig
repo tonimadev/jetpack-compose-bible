@@ -1,0 +1,73 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_size = 2
+indent_style = space
+insert_final_newline = true
+trim_trailing_whitespace = true
+max_line_length = 120
+tab_width = 2
+ij_continuation_indent_size = 8
+ij_formatter_off_tag = @formatter:off
+ij_formatter_on_tag = @formatter:on
+ij_formatter_tags_enabled = false
+ij_smart_tabs = false
+ij_visual_guides = 120
+ij_wrap_on_typing = false
+
+[*.{kt,kts}]
+indent_size = 4
+tab_width = 4
+ij_continuation_indent_size = 4
+ij_kotlin_code_style_defaults = KOTLIN_OFFICIAL
+ij_kotlin_name_count_to_use_star_import = 999
+ij_kotlin_name_count_to_use_star_import_for_members = 999
+ktlint_code_style = ktlint_official
+ktlint_standard = enabled
+ktlint_experimental = disabled
+ktlint_ignore_back_ticked_identifier = true
+ij_kotlin_packages_to_use_import_on_demand = unset
+ktlint_function_naming_ignore_when_annotated_with=Composable
+
+[*.java]
+indent_size = 4
+tab_width = 4
+ij_continuation_indent_size = 4
+ij_java_imports_layout = android.**, |, com.**, |, junit.**, |, net.**, |, org.**, |, java.**, |, javax.**, |, *, |, $*, |
+ij_java_insert_override_annotation = true
+ij_java_names_count_to_use_import_on_demand = 1
+ij_java_use_single_class_imports = true
+
+[*.{ant,fxml,jhm,jnlp,jrxml,rng,tld,wsdl,xml,xsd,xsl,xslt,xul}]
+indent_size = 4
+tab_width = 4
+ij_continuation_indent_size = 4
+ij_wrap_on_typing = true
+ij_xml_attribute_wrap = normal
+ij_xml_keep_blank_lines = 2
+ij_xml_space_inside_empty_tag = true
+ij_xml_text_wrap = normal
+ij_xml_use_custom_settings = true
+
+[*.{gant,gradle,groovy,gy}]
+indent_size = 4
+tab_width = 4
+ij_continuation_indent_size = 4
+ij_groovy_class_count_to_use_import_on_demand = 5
+ij_groovy_names_count_to_use_import_on_demand = 3
+ij_groovy_use_single_class_imports = true
+
+[*.{yaml,yml}]
+ij_yaml_keep_indents_on_empty_lines = false
+ij_yaml_keep_line_breaks = true
+
+[*.{rb,ru,rake,gemspec,jbuilder},{Gemfile,Rakefile,config.ru}]
+charset = utf-8
+end_of_line = lf
+indent_size = 2
+indent_style = space
+insert_final_newline = true
+trim_trailing_whitespace = true
+max_line_length = 120

@@ -1,146 +1,135 @@
 plugins {
-    id(BuildPlugins.android)
-    id(BuildPlugins.kotlinXSerialization)
-//    id(BuildPlugins.crashlytics)
-//    id(BuildPlugins.firebasePerformance)
-//    id(BuildPlugins.gmsGooglePlayServices)
-//    id(BuildPlugins.appDistribution)
-
-//    id(BuildPlugins.tripletPlay)
-    id(BuildPlugins.kotlinParcelize)
-    kotlin("android")
-    id(BuildPlugins.kotlinAndroid)
-    kotlin(BuildPlugins.kapt)
-    id(BuildPlugins.daggerHilt)
-    id(BuildPlugins.klint)
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.detekt)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.kotlin.parcelize)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.ktlint)
+    alias(libs.plugins.spotless)
 }
 
-val BIBLIA_DIGITAL_TOKEN: String? by project
+val bibliaDigitalToken: String =
+    (project.findProperty("BIBLIA_DIGITAL_TOKEN") as? String)?.takeIf {
+        it.isNotBlank()
+    } ?: ""
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
+}
+
 android {
-    compileSdk = ConfigData.compileSdkVersion
-    buildToolsVersion = ConfigData.buildToolsVersion
+    namespace = "digital.tonima.bibliadigital"
+    compileSdk = 37
 
     defaultConfig {
-        applicationId = ConfigData.applicationId
-        minSdk = ConfigData.minSdkVersion
-        targetSdk = ConfigData.targetSdkVersion
-        versionCode = ConfigData.versionCode
-        versionName = ConfigData.versionName
-        testInstrumentationRunner = ConfigData.instrumentationRunner
-        vectorDrawables.useSupportLibrary = ConfigData.useSupportLibrary
-        multiDexEnabled = ConfigData.multiDexEnabled
+        applicationId = "digital.tonima.bibliadigital"
+        minSdk = 23
+        targetSdk = 37
+        versionCode = 14
+        versionName = "1.14"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables {
+            useSupportLibrary = true
+        }
     }
 
     buildTypes {
-        named("debug") {
-            isDebuggable = true
-            buildConfigField("boolean", "DEBUG", "true")
-            buildConfigField("String", "BIBLIA_DIGITAL_TOKEN", BIBLIA_DIGITAL_TOKEN ?: "")
-        }
-
-        named("release") {
-            isShrinkResources = true
+        release {
             isMinifyEnabled = true
-            isDebuggable = false
-            buildConfigField("boolean", "DEBUG", "false")
-            buildConfigField("String", "BIBLIA_DIGITAL_TOKEN", BIBLIA_DIGITAL_TOKEN ?: "")
-            setProguardFiles(
-                listOf(
-                    getDefaultProguardFile("proguard-android-optimize.txt"),
-                    "proguard-rules.pro"
-                )
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
             )
+            buildConfigField("boolean", "DEBUG", "false")
+            buildConfigField("String", "BIBLIA_DIGITAL_TOKEN", "\"$bibliaDigitalToken\"")
+        }
+        debug {
+            buildConfigField("boolean", "DEBUG", "true")
+            buildConfigField("String", "BIBLIA_DIGITAL_TOKEN", "\"$bibliaDigitalToken\"")
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
-    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-        kotlinOptions {
-            freeCompilerArgs = listOf("-opt-in=kotlin.RequiresOptIn")
-            jvmTarget = "1.8"
-        }
-    }
-    dataBinding {
-        enable = true
-    }
-
     buildFeatures {
         compose = true
+        buildConfig = true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = Versions.compose
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/*"
+        }
     }
-    packagingOptions {
-        resources.excludes.add("META-INF/*")
-    }
-    namespace = ConfigData.applicationId
 }
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+        freeCompilerArgs.addAll(
+            "-opt-in=kotlin.RequiresOptIn",
+            "-opt-in=androidx.compose.material.ExperimentalMaterialApi",
+            "-opt-in=com.google.accompanist.navigation.animation.ExperimentalAnimationApi",
+        )
+    }
+}
+
 dependencies {
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
 
-    implementation(Deps.coreKtx)
-    implementation(Deps.lifecycleRuntime)
-    implementation(Deps.activityCompose)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    debugImplementation(libs.androidx.compose.ui.tooling)
 
-    // Tests
-    testImplementation(Test.mockito)
-    testImplementation(Test.jUnit)
-    androidTestImplementation(Test.testExt)
-
-    // Kotlin Coroutines
-    implementation(Deps.coroutinesCore)
-    implementation(Deps.coroutinesAndroid)
-    implementation(Deps.coroutinesPlayservice)
-    implementation(Deps.workRuntime)
-
-    // Room
-    implementation(Deps.roomKtx)
-    implementation(Deps.roomRuntime)
-    kapt(Deps.sqliteJdbc)
-    kapt(Deps.roomCompiler)
-
-    // Navigation Compose
-    implementation(Deps.navigationCompose)
-
+    // Coroutines
+    implementation(libs.kotlinx.coroutines.android)
     // Hilt
-    implementation(Deps.hilt)
-    kapt(Deps.hiltCompiler)
-    implementation(Deps.hiltWorker)
+    implementation(libs.hilt.android)
+    // Misc
+    implementation(libs.timber)
+    // Navigation
+    implementation(libs.androidx.navigation.compose)
+    // Retrofit & OkHttp
+    implementation(libs.retrofit)
+    // Room
+    implementation(libs.room.runtime)
+    // Serialization & Gson
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.accompanist.systemuicontroller)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.material)
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.compose.runtime.livedata)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.gson)
+    implementation(libs.hilt.navigation.compose)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.okhttp.logging)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.room.ktx)
+    implementation(platform(libs.androidx.compose.bom))
 
-    // Serialization
-    implementation(Deps.kotlinSerialization)
+    ksp(libs.hilt.compiler)
+    ksp(libs.room.compiler)
 
-    // Gson
-    implementation(Deps.gson)
-
-    // Retrofit
-    implementation(Deps.retrofit)
-    implementation(Deps.converterGson)
-    implementation(Deps.loggingInterceptor)
-    // Timber
-    implementation(Deps.timber)
-
-    // Compose
-    implementation(Deps.composeRuntime)
-    implementation(Deps.composeUi)
-    implementation(Deps.composeMaterial)
-    implementation(Deps.composeUiToolingPreview)
-    debugImplementation(Deps.composeUiTooling)
-    debugImplementation(Deps.composeUiTest)
-    implementation(Deps.accompanist)
-
-    // Datastore
-    implementation(Deps.dataStore)
-
-    // Firebase
-//    implementation platform("com.google.firebase:firebase-bom:29.3.1")
-//    implementation "com.google.firebase:firebase-analytics-ktx"
-//    implementation "com.google.firebase:firebase-crashlytics-ktx"
-//    implementation "com.google.firebase:firebase-perf-ktx"
-//    implementation "com.google.firebase:firebase-database-ktx"
+    // Test
+    testImplementation(libs.junit)
 }
 
-kapt {
-    correctErrorTypes = true
-}
+apply(from = "../spotless.gradle")

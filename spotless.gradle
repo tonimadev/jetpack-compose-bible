@@ -1,0 +1,21 @@
+spotless {
+    lineEndings 'UNIX'
+    kotlin {
+        target '**/*.kt'
+        targetExclude(
+            "**/build/**/*.kt",
+            "**/build/generated/**/*.kt",
+            "**/bin/**/*.kt",
+            "**/BuildConfig.kt",
+            "**/R.kt",
+            "**/*_Hilt*.kt",
+            "**/Dagger*Component.kt",
+            "**/Dagger*Module.kt"
+        )
+        ktlint("1.2.1").setEditorConfigPath("$rootDir/.editorconfig")
+    }
+    kotlinGradle {
+        target '*.gradle.kts', 'additional/*.gradle.kts'
+        ktlint("1.2.1").setEditorConfigPath("$rootDir/.editorconfig")
+    }
+}

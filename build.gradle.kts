@@ -1,65 +1,121 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
-buildscript {
-
-    repositories {
-        google()
-        mavenCentral()
-        maven("https://plugins.gradle.org/m2/")
-        maven("https://oss.sonatype.org/content/repositories/snapshots")
-    }
-    dependencies {
-        classpath(BuildPlugins.androidGradle)
-        classpath(BuildPlugins.googleServices)
-        classpath(BuildPlugins.firebaseCrashlytics)
-        // NOTE: Do not place your application dependencies here; they belong
-        // in the individual module build.gradle files
-        classpath(BuildPlugins.playPublisher)
-        classpath(BuildPlugins.kotlin)
-        classpath(BuildPlugins.firebaseAppDistribution)
-        classpath(BuildPlugins.firebasePerf)
-        classpath(BuildPlugins.kotlinGradle)
-        //Serialization
-        classpath(BuildPlugins.kotlinXSerializationGradle)
-
-        //Firebase
-        //classpath 'com.google.gms:google-services:4.3.13'
-        // classpath 'com.google.firebase:firebase-crashlytics-gradle:2.9.1'
-        // classpath 'com.google.firebase:perf-plugin:1.4.1'
-
-        //Klint
-        classpath(BuildPlugins.klintGradle)
-
-        //app distribution
-//        classpath 'com.google.firebase:firebase-appdistribution-gradle:3.0.2'
-//
-//        classpath("com.github.triplet.gradle:play-publisher:4.0.0-SNAPSHOT")
-    }
-}
 plugins {
-    id(BuildPlugins.hiltPlugin) version Versions.hilt apply false
-    id(BuildPlugins.kotlinAndroidGradle) version Versions.kotlin apply false
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.compose.compiler) apply false
+    alias(libs.plugins.detekt)
+    alias(libs.plugins.hilt) apply false
+    alias(libs.plugins.kotlin.parcelize) apply false
+    alias(libs.plugins.kotlin.serialization) apply false
+    alias(libs.plugins.ksp) apply false
+    alias(libs.plugins.ktlint) apply false
+    alias(libs.plugins.spotless)
 }
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-        maven("https://jitpack.io")
-        maven("https://oss.sonatype.org/content/repositories/snapshots")
-    }
+
+apply(from = "spotless.gradle")
+
+subprojects {
+    apply(plugin = "io.gitlab.arturbosch.detekt")
 }
-configurations.all {
-    if (!name.startsWith("ktlint")) {
-        resolutionStrategy {
-            eachDependency {
-                // Force Kotlin to our version
-                if (requested.group == "org.jetbrains.kotlin") {
-                    useVersion(Versions.kotlin)
+
+detekt {
+    toolVersion = libs.versions.detekt.get()
+    config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
+    buildUponDefaultConfig = true
+}
+
+val sortDependencies by tasks.registering {
+    group = "Verification"
+    description = "Checks and sorts dependencies and plugins in build.gradle.kts files with spacing between groups."
+
+    val buildFilesFromConfig = project.allprojects.map { it.file("build.gradle.kts") }.filter { it.exists() }
+    inputs.files(buildFilesFromConfig)
+
+    doLast {
+        inputs.files.forEach { file ->
+            val lines = file.readLines()
+            val newLines = mutableListOf<String>()
+            var i = 0
+            while (i < lines.size) {
+                val line = lines[i]
+                if (line.trim().startsWith("plugins {") || line.trim().startsWith("dependencies {")) {
+                    val isDependencies = line.trim().startsWith("dependencies {")
+                    newLines.add(line)
+                    val blockLines = mutableListOf<String>()
+                    i++
+                    var openBraces = 1
+                    while (i < lines.size && openBraces > 0) {
+                        val currentLine = lines[i]
+                        openBraces += currentLine.count { it == '{' }
+                        openBraces -= currentLine.count { it == '}' }
+                        if (openBraces > 0) {
+                            blockLines.add(currentLine)
+                            i++
+                        }
+                    }
+
+                    if (isDependencies) {
+                        val groups = mutableMapOf<String, MutableList<String>>()
+                        val other = mutableListOf<String>()
+
+                        var currentComments = mutableListOf<String>()
+
+                        blockLines.forEach { bl ->
+                            val trimmed = bl.trim()
+                            if (trimmed.isEmpty()) return@forEach
+
+                            if (trimmed.startsWith("//")) {
+                                currentComments.add(bl)
+                            } else {
+                                val match = Regex("^([a-zA-Z]+)\\(.*\\)$").find(trimmed)
+                                val groupName = match?.groupValues?.get(1) ?: "other"
+
+                                val entry = (currentComments + bl).joinToString("\n")
+                                if (groupName != "other") {
+                                    groups.getOrPut(groupName) { mutableListOf() }.add(entry)
+                                } else {
+                                    other.add(entry)
+                                }
+                                currentComments = mutableListOf()
+                            }
+                        }
+
+                        val sortedGroupNames = groups.keys.sorted()
+                        sortedGroupNames.forEachIndexed { index, name ->
+                            val sortedEntries = groups[name]!!.sortedBy { it.trim().lowercase() }
+                            newLines.addAll(sortedEntries)
+                            if (index < sortedGroupNames.size - 1 || other.isNotEmpty()) {
+                                if (newLines.last().isNotBlank()) {
+                                    newLines.add("")
+                                }
+                            }
+                        }
+                        if (other.isNotEmpty()) {
+                            newLines.addAll(other.sortedBy { it.trim().lowercase() })
+                        }
+                    } else {
+                        // For plugins, just sort alphabetically but keep comments
+                        val entries = mutableListOf<String>()
+                        var currentComments = mutableListOf<String>()
+                        blockLines.forEach { bl ->
+                            val trimmed = bl.trim()
+                            if (trimmed.isEmpty()) return@forEach
+                            if (trimmed.startsWith("//")) {
+                                currentComments.add(bl)
+                            } else {
+                                entries.add((currentComments + bl).joinToString("\n"))
+                                currentComments = mutableListOf()
+                            }
+                        }
+                        newLines.addAll(entries.sortedBy { it.trim().lowercase() })
+                    }
+
+                    if (i < lines.size) newLines.add(lines[i])
+                } else {
+                    newLines.add(line)
                 }
+                i++
             }
+            file.writeText(newLines.joinToString("\n") + "\n")
         }
     }
-}
-
-tasks.register<Delete>("clean").configure {
-    delete(rootProject.buildDir)
 }
