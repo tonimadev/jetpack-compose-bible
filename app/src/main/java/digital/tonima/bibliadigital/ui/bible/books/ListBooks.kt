@@ -22,66 +22,65 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.State
-import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.SoftwareKeyboardController
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import digital.tonima.bibliadigital.R
 import digital.tonima.bibliadigital.domain.model.BookResponse
+import digital.tonima.bibliadigital.ui.bible.BibleIntent
 import digital.tonima.bibliadigital.ui.bible.BibleViewModel
 import digital.tonima.bibliadigital.ui.components.AppBar
 import digital.tonima.bibliadigital.ui.components.ErrorScreen
 import digital.tonima.bibliadigital.ui.components.Loading
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun ListBooks(
     viewModel: BibleViewModel,
     navController: NavController,
-    loading: State<Boolean>,
-    keyboardController: SoftwareKeyboardController?,
 ) {
-    val fontSizeState: State<TextUnit> = viewModel.fontSize.observeAsState(initial = 16.sp)
-
-    val textState =
-        remember { mutableStateOf(viewModel.lastSearch.value?.let { TextFieldValue(it) }) }
-
-    val booksState: State<List<BookResponse>> =
-        viewModel.books.observeAsState(initial = emptyList())
-    val filteredBooksState: State<List<BookResponse>?> =
-        viewModel.filteredBooks.observeAsState(
-            initial = null,
-        )
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val textState = remember { mutableStateOf(TextFieldValue(state.lastSearch)) }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     Scaffold(topBar = {
         AppBar(
-            stringResource(id = R.string.app_name),
+            title = stringResource(id = R.string.app_name),
             icon = Icons.Default.Home,
         )
-    }) {
+    }) { paddingValues ->
         Surface(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
         ) {
-            if (loading.value) Loading()
+            if (state.isLoading) Loading()
             Column {
-                if (booksState.value.isEmpty() && !loading.value) ErrorScreen { viewModel.getBooks() }
-                SearchView(textState, viewModel, keyboardController) {
-                    textState.value = TextFieldValue("")
-                    viewModel.searchBook("")
+                if (state.books.isEmpty() && !state.isLoading) {
+                    ErrorScreen { viewModel.sendIntent(BibleIntent.LoadBooks) }
                 }
+                SearchView(
+                    state = textState,
+                    onSearch = { query ->
+                        viewModel.sendIntent(BibleIntent.UpdateLastSearch(query))
+                        viewModel.sendIntent(BibleIntent.SearchBook(query))
+                    },
+                    onDeleteClick = {
+                        textState.value = TextFieldValue("")
+                        viewModel.sendIntent(BibleIntent.UpdateLastSearch(""))
+                        viewModel.sendIntent(BibleIntent.SearchBook(""))
+                        viewModel.sendIntent(BibleIntent.ClearFilteredBooks)
+                    },
+                )
                 LazyColumn {
-                    items(filteredBooksState.value ?: booksState.value) { book ->
-                        BookItem(book, fontSizeState) {
+                    items(state.filteredBooks ?: state.books) { book ->
+                        BookItem(book, state.fontSize) {
                             keyboardController?.hide()
                             navController.navigate("chapters_list/${book.name}/${book.abbrev.pt}/${book.chapters}")
                         }
@@ -92,52 +91,43 @@ fun ListBooks(
     }
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun SearchView(
-    state: MutableState<TextFieldValue?>,
-    viewModel: BibleViewModel,
-    keyboardController: SoftwareKeyboardController?,
+    state: MutableState<TextFieldValue>,
+    onSearch: (String) -> Unit,
     onDeleteClick: () -> Unit,
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+
     Surface(modifier = Modifier.fillMaxWidth()) {
-        state.value?.let {
-            TextField(
-                value = it,
-                onValueChange = { value: TextFieldValue ->
-                    state.value = value
-                    viewModel.updateLastSearch(value.text)
-                    if (value.text.isBlank()) {
-                        viewModel.clearFilteredBooks()
-                    } else {
-                        viewModel.searchBook(
-                            value.text,
-                        )
-                    }
-                },
-                label = {
-                    Text(stringResource(id = R.string.find_book))
-                },
-                trailingIcon = {
-                    if (state.value?.text?.isBlank() == false) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = null,
-                            modifier =
-                                Modifier.clickable {
-                                    onDeleteClick()
-                                },
-                        )
-                    }
-                },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions =
-                    KeyboardActions(
-                        onDone = { keyboardController?.hide() },
-                    ),
-            )
-        }
+        TextField(
+            value = state.value,
+            onValueChange = { value: TextFieldValue ->
+                state.value = value
+                onSearch(value.text)
+            },
+            label = {
+                Text(stringResource(id = R.string.find_book))
+            },
+            trailingIcon = {
+                if (state.value.text.isNotBlank()) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = null,
+                        modifier =
+                            Modifier.clickable {
+                                onDeleteClick()
+                            },
+                    )
+                }
+            },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions =
+                KeyboardActions(
+                    onDone = { keyboardController?.hide() },
+                ),
+        )
     }
 }
 
@@ -145,7 +135,7 @@ fun SearchView(
 @Composable
 fun BookItem(
     book: BookResponse,
-    fontSizeState: State<TextUnit>,
+    fontSize: TextUnit,
     onBookClick: () -> Unit,
 ) {
     Surface(
@@ -156,8 +146,8 @@ fun BookItem(
             modifier = Modifier.padding(8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(text = book.name, fontSize = fontSizeState.value)
-            Text(text = book.abbrev.pt, fontSize = fontSizeState.value)
+            Text(text = book.name, fontSize = fontSize)
+            Text(text = book.abbrev.pt, fontSize = fontSize)
         }
     }
 }

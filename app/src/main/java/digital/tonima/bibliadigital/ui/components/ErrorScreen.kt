@@ -13,18 +13,19 @@ import androidx.compose.ui.res.stringResource
 import digital.tonima.bibliadigital.R
 
 @Composable
-fun ErrorScreen(function: () -> Unit) {
+fun ErrorScreen(
+    modifier: Modifier = Modifier,
+    onRetry: () -> Unit,
+) {
     Surface(
-        modifier =
-            Modifier
-                .fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
     ) {
         Column(
             verticalArrangement = Arrangement.SpaceEvenly,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(text = stringResource(id = R.string.loading_error))
-            Button(onClick = function, enabled = true) {
+            Button(onClick = onRetry, enabled = true) {
                 Text(text = stringResource(id = R.string.try_again))
             }
         }

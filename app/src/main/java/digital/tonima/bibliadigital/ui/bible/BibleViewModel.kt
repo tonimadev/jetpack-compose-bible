@@ -2,10 +2,7 @@ package digital.tonima.bibliadigital.ui.bible
 
 import android.content.Context
 import android.speech.tts.TextToSpeech
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import digital.tonima.bibliadigital.domain.common.constants.MAX_FONT_SIZE
@@ -36,68 +33,58 @@ class BibleViewModel
         private val storeFontSizeUseCase: StoreFontSizeUseCase,
         private val disableShowPressAndHoldVerseTutorialUseCase: DisableShowPressAndHoldVerseTutorialUseCase,
         private val getStoreShowPressAndHoldVerseTutorial: GetShowPressAndHoldVerseTutorialUseCase,
-    ) : BaseViewModel() {
-        private var bruteFontSize = 16
-
-        private val _showTutorial = MutableLiveData(true)
-        private val _selectedVerse = MutableLiveData<Verse?>(null)
-        private val _fontSize = MutableLiveData(bruteFontSize.sp)
-        private val _currentChapter = MutableLiveData<Int>()
-        private val _currentText = MutableLiveData<String>()
-        private val _books: MutableLiveData<List<BookResponse>> = MutableLiveData()
-        private val _lastSearch: MutableLiveData<String> = MutableLiveData("")
-        private val _filteredBooks: MutableLiveData<List<BookResponse>?> = MutableLiveData()
-        private val _chapter: MutableLiveData<ChapterResponse> = MutableLiveData()
+    ) : BaseViewModel<BibleState, BibleIntent, BibleEvent>() {
         private var textToSpeech: TextToSpeech? = null
-        private val _isSpeechEnabled: MutableLiveData<Boolean> = MutableLiveData(false)
 
-        val showTutorial: LiveData<Boolean> = _showTutorial
-        val selectedVerse: LiveData<Verse?> = _selectedVerse
-        val fontSize: LiveData<TextUnit> = _fontSize
-        val books: LiveData<List<BookResponse>> = _books
-        val lastSearch: LiveData<String> = _lastSearch
-        val filteredBooks: LiveData<List<BookResponse>?> = _filteredBooks
-        val chapter: LiveData<ChapterResponse> = _chapter
-        val isSpeechEnabled: LiveData<Boolean> = _isSpeechEnabled
-        val currentText: LiveData<String> = _currentText
-        val currentChapter: LiveData<Int> = _currentChapter
+        override fun createInitialState() = BibleState()
 
         init {
+            sendIntent(BibleIntent.LoadBooks)
             getFontSize()
             getShowTutorialValue()
-            getBooks()
+        }
+
+        override fun handleIntent(intent: BibleIntent) {
+            when (intent) {
+                is BibleIntent.LoadBooks -> getBooks()
+                is BibleIntent.SearchBook -> searchBook(intent.query)
+                is BibleIntent.LoadChapter -> getBookChapter(intent.bookName, intent.bookAbbrev, intent.chapterId)
+                is BibleIntent.UpdateLastSearch -> updateLastSearch(intent.query)
+                is BibleIntent.ClearFilteredBooks -> clearFilteredBooks()
+                is BibleIntent.NextChapter -> nextChapter()
+                is BibleIntent.PreviousChapter -> previousChapter()
+                is BibleIntent.IncreaseFontSize -> increaseFontSize()
+                is BibleIntent.DecreaseFontSize -> decreaseFontSize()
+                is BibleIntent.SetSelectedVerse -> setSelectedVerse(intent.verse)
+                is BibleIntent.ClearSelectedVerse -> clearSelectedVerse()
+                is BibleIntent.DisableTutorial -> disableTutorials()
+                is BibleIntent.TextToSpeech -> textToSpeech(intent.context, intent.text)
+                is BibleIntent.StopSpeech -> stopSpeech()
+            }
         }
 
         private fun getShowTutorialValue() {
-            return getStoreShowPressAndHoldVerseTutorial(
+            getStoreShowPressAndHoldVerseTutorial(
                 UseCase.None(),
                 viewModelScope,
-            ) { it.fold(::handleFailure, ::handleShowTutorial) }
+            ) { it.fold(::handleFailure, { show -> setState { copy(showTutorial = show) } }) }
         }
 
-        private fun handleShowTutorial(showTutorial: Boolean) {
-            _showTutorial.value = showTutorial
+        private fun nextChapter() {
+            val next = uiState.value.currentChapter + 1
+            setState { copy(currentChapter = next) }
         }
 
-        fun setCurrentChapter(chapter: Int) {
-            _currentChapter.value = chapter
-        }
-
-        fun nextChapter() {
-            _currentChapter.value?.let {
-                _currentChapter.value = it + 1
+        private fun previousChapter() {
+            if (uiState.value.currentChapter > 1) {
+                val prev = uiState.value.currentChapter - 1
+                setState { copy(currentChapter = prev) }
             }
         }
 
-        fun previousChapter() {
-            _currentChapter.value?.let {
-                if (it > 1) _currentChapter.value = it - 1
-            }
-        }
-
-        fun getBooks() {
-            handleLoading(true)
-            return getBooksUseCase(
+        private fun getBooks() {
+            setState { copy(isLoading = true) }
+            getBooksUseCase(
                 UseCase.None(),
                 viewModelScope,
             ) {
@@ -108,14 +95,13 @@ class BibleViewModel
             }
         }
 
-        fun getBookChapter(
+        private fun getBookChapter(
             bookName: String,
             bookAbbrev: String,
             chapterId: Int,
         ) {
-            handleLoading(true)
-            _chapter.postValue(null)
-            return getChapterUseCase(
+            setState { copy(isLoading = true, chapter = null) }
+            getChapterUseCase(
                 GetChapterUseCase.Params(bookName, bookAbbrev, chapterId),
                 viewModelScope,
             ) {
@@ -126,19 +112,16 @@ class BibleViewModel
             }
         }
 
-        fun searchBook(search: String) {
-            _filteredBooks.postValue(
-                _books.value?.filter {
+        private fun searchBook(search: String) {
+            val filtered =
+                uiState.value.books.filter {
                     it.name.removeAccents().contains(search, true) ||
-                        it.abbrev.pt.contains(
-                            search,
-                            true,
-                        )
-                },
-            )
+                        it.abbrev.pt.contains(search, true)
+                }
+            setState { copy(filteredBooks = filtered) }
         }
 
-        fun textToSpeech(
+        private fun textToSpeech(
             context: Context,
             text: String,
         ) {
@@ -159,15 +142,15 @@ class BibleViewModel
                         }
                     }
                 }
-            _isSpeechEnabled.postValue(true)
+            setState { copy(isSpeechEnabled = true) }
         }
 
-        fun stopSpeech() {
+        private fun stopSpeech() {
             if (textToSpeech?.isSpeaking == true) {
                 textToSpeech?.stop()
                 textToSpeech?.shutdown()
             }
-            _isSpeechEnabled.value = textToSpeech?.isSpeaking ?: false
+            setState { copy(isSpeechEnabled = textToSpeech?.isSpeaking ?: false) }
         }
 
         private fun getFontSize() {
@@ -177,89 +160,79 @@ class BibleViewModel
             ) {
                 it.fold(
                     ::handleFailure,
-                    ::handleFontSizeFetchSuccess,
+                    { size -> setState { copy(fontSize = size.sp) } },
                 )
             }
         }
 
-        private fun storeFontSize() {
+        private fun storeFontSize(size: Int) {
             storeFontSizeUseCase(
-                StoreFontSizeUseCase.Params(bruteFontSize),
+                StoreFontSizeUseCase.Params(size),
                 viewModelScope,
             ) {
                 it.fold(
                     ::handleFailure,
-                    ::handleFontSizeStoreSuccess,
+                    { Timber.i("----- Font size stored") },
                 )
             }
         }
 
-        private fun handleFontSizeStoreSuccess(fontSize: Unit) {
-            Timber.i("----- Font size stored $fontSize")
-        }
-
-        private fun handleFontSizeFetchSuccess(fontSize: Int) {
-            Timber.i("----- Font retrieved $fontSize")
-            bruteFontSize = fontSize
-            _fontSize.value = bruteFontSize.sp
-        }
-
         private fun handleFetchBookChapterSuccess(chapterResponse: ChapterResponse) {
-            handleLoading(false)
-            _chapter.postValue(chapterResponse)
-            _currentText.value =
-                chapterResponse.verses.map { it.text + " " }
-                    .toString()
+            setState {
+                copy(
+                    isLoading = false,
+                    chapter = chapterResponse,
+                    currentText = chapterResponse.verses.joinToString(" ") { it.text },
+                )
+            }
         }
 
         private fun handleBooksFetchSuccess(bookResponse: List<BookResponse>) {
-            handleLoading(false)
-            _books.postValue(bookResponse)
+            setState { copy(isLoading = false, books = bookResponse) }
         }
 
-        private fun handleTutorialDisabled(unit: Unit) {
-            _showTutorial.value = false
-            Timber.i("----- Tutorial disabled $unit")
+        private fun clearFilteredBooks() {
+            setState { copy(filteredBooks = null) }
         }
 
-        fun clearFilteredBooks() {
-            _filteredBooks.postValue(null)
+        private fun updateLastSearch(text: String) {
+            setState { copy(lastSearch = text) }
         }
 
-        fun updateLastSearch(text: String) {
-            _lastSearch.postValue(text)
-        }
-
-        fun increaseFontSize() {
-            if (bruteFontSize < MAX_FONT_SIZE) {
-                _fontSize.value = (++bruteFontSize).sp
-                storeFontSize()
+        private fun increaseFontSize() {
+            val current = uiState.value.fontSize.value.toInt()
+            if (current < MAX_FONT_SIZE) {
+                val next = current + 1
+                setState { copy(fontSize = next.sp) }
+                storeFontSize(next)
             }
         }
 
-        fun decreaseFontSize() {
-            if (bruteFontSize > MIN_FONT_SIZE) {
-                _fontSize.value = (--bruteFontSize).sp
-                storeFontSize()
+        private fun decreaseFontSize() {
+            val current = uiState.value.fontSize.value.toInt()
+            if (current > MIN_FONT_SIZE) {
+                val next = current - 1
+                setState { copy(fontSize = next.sp) }
+                storeFontSize(next)
             }
         }
 
-        fun setSelectedVerse(verse: Verse) {
-            _selectedVerse.value = verse
+        private fun setSelectedVerse(verse: Verse) {
+            setState { copy(selectedVerse = verse) }
         }
 
-        fun clearSelectedVerse() {
-            _selectedVerse.value = null
+        private fun clearSelectedVerse() {
+            setState { copy(selectedVerse = null) }
         }
 
-        fun disableTutorials() {
-            return disableShowPressAndHoldVerseTutorialUseCase(
+        private fun disableTutorials() {
+            disableShowPressAndHoldVerseTutorialUseCase(
                 UseCase.None(),
                 viewModelScope,
             ) {
                 it.fold(
                     ::handleFailure,
-                    ::handleTutorialDisabled,
+                    { setState { copy(showTutorial = false) } },
                 )
             }
         }

@@ -1,9 +1,11 @@
 package digital.tonima.bibliadigital.domain.model
 
+import androidx.compose.runtime.Immutable
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.google.gson.annotations.SerializedName
 
+@Immutable
 @Entity
 data class Verse(
     @PrimaryKey(autoGenerate = true)

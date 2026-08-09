@@ -11,11 +11,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 
 @Composable
-fun Loading() {
+fun Loading(modifier: Modifier = Modifier) {
     Box(
         contentAlignment = Alignment.Center,
         modifier =
-            Modifier
+            modifier
                 .fillMaxSize()
                 .background(if (isSystemInDarkTheme()) Color.Black else Color.White),
     ) {

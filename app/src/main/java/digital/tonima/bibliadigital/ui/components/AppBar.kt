@@ -17,16 +17,18 @@ import digital.tonima.bibliadigital.R
 
 @Composable
 fun AppBar(
+    modifier: Modifier = Modifier,
     title: String = stringResource(id = R.string.app_name),
     icon: ImageVector? = null,
     onBackClick: () -> Unit = {},
 ) {
     TopAppBar(
+        modifier = modifier,
         navigationIcon = {
             if (icon != null) {
                 Icon(
                     imageVector = icon,
-                    "",
+                    contentDescription = "",
                     Modifier
                         .padding(horizontal = 12.dp)
                         .clickable { onBackClick.invoke() },

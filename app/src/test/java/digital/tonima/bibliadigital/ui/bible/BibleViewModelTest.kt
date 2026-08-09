@@ -16,7 +16,9 @@ import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -72,24 +74,28 @@ class BibleViewModelTest {
     }
 
     @Test
-    fun `when init should fetch initial data`() {
-        coVerify { getFontSizeUseCase(any(), any(), any()) }
-        coVerify { getStoreShowPressAndHoldVerseTutorial(any(), any(), any()) }
-        coVerify { getBooksUseCase(any(), any(), any()) }
+    fun `when init should fetch initial data`() =
+        runTest {
+            advanceUntilIdle()
+            coVerify { getFontSizeUseCase(any(), any(), any()) }
+            coVerify { getStoreShowPressAndHoldVerseTutorial(any(), any(), any()) }
+            coVerify { getBooksUseCase(any(), any(), any()) }
 
-        assertEquals(16, viewModel.fontSize.value?.value?.toInt())
-        assertEquals(true, viewModel.showTutorial.value)
-    }
-
-    @Test
-    fun `when getBooks is called should update books live data`() {
-        val mockBooks = listOf(BookResponse(1, Abbrev(pt = "gn"), name = "Genesis"))
-        coEvery { getBooksUseCase(any(), any(), any()) } coAnswers {
-            thirdArg<(Either<*, List<BookResponse>>) -> Unit>().invoke(Either.Success(mockBooks))
+            assertEquals(16, viewModel.uiState.value.fontSize.value.toInt())
+            assertEquals(true, viewModel.uiState.value.showTutorial)
         }
 
-        viewModel.getBooks()
+    @Test
+    fun `when LoadBooks intent is sent should update books in state`() =
+        runTest {
+            val mockBooks = listOf(BookResponse(1, Abbrev(pt = "gn"), name = "Genesis"))
+            coEvery { getBooksUseCase(any(), any(), any()) } coAnswers {
+                thirdArg<(Either<*, List<BookResponse>>) -> Unit>().invoke(Either.Success(mockBooks))
+            }
 
-        assertEquals(mockBooks, viewModel.books.value)
-    }
+            viewModel.sendIntent(BibleIntent.LoadBooks)
+            advanceUntilIdle()
+
+            assertEquals(mockBooks, viewModel.uiState.value.books)
+        }
 }

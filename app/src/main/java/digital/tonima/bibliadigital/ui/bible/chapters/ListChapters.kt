@@ -1,6 +1,5 @@
 package digital.tonima.bibliadigital.ui.bible.chapters
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
@@ -15,18 +14,16 @@ import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
-import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import digital.tonima.bibliadigital.ui.bible.BibleViewModel
 import digital.tonima.bibliadigital.ui.components.AppBar
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ListChapters(
     bookName: String,
@@ -35,20 +32,20 @@ fun ListChapters(
     navController: NavHostController,
     viewModel: BibleViewModel,
 ) {
-    val fontSizeState: State<TextUnit> = viewModel.fontSize.observeAsState(initial = 16.sp)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(topBar = {
-        AppBar(bookName, icon = Icons.Default.ArrowBack) {
+        AppBar(title = bookName, icon = Icons.Default.ArrowBack) {
             navController.navigateUp()
         }
-    }) {
+    }) { paddingValues ->
         Surface(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
         ) {
             LazyVerticalGrid(columns = GridCells.Adaptive(minSize = 70.dp)) {
                 items(chapterQuantity) { index ->
                     val currentChapter = index + 1
-                    ChapterItem(currentChapter, fontSizeState) {
+                    ChapterItem(currentChapter, state.fontSize) {
                         navController.navigate("reading/$bookName/$bookAbbrev/$currentChapter/$chapterQuantity")
                     }
                 }
@@ -61,7 +58,7 @@ fun ListChapters(
 @Composable
 fun ChapterItem(
     chapter: Int,
-    fontSizeState: State<TextUnit>,
+    fontSize: TextUnit,
     onBookClick: () -> Unit,
 ) {
     Card(
@@ -76,7 +73,7 @@ fun ChapterItem(
             text = chapter.toString(),
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(12.dp),
-            fontSize = fontSizeState.value,
+            fontSize = fontSize,
         )
     }
 }

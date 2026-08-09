@@ -57,13 +57,17 @@ interface BibleRepository : Repository {
                 } else {
                     val abbrevs = booksDao.getAllAbbrevs()
 
-                    books.forEach { bookResponse ->
-                        abbrevs.firstOrNull { it.bookName == bookResponse.name }?.abbrev?.let {
-                            bookResponse.abbrev = Abbrev(pt = it)
+                    val mappedBooks =
+                        books.map { bookResponse ->
+                            val abbrevStr = abbrevs.firstOrNull { it.bookName == bookResponse.name }?.abbrev
+                            if (abbrevStr != null) {
+                                bookResponse.copy(abbrev = Abbrev(pt = abbrevStr))
+                            } else {
+                                bookResponse
+                            }
                         }
-                    }
 
-                    Either.Success(books.distinctBy { it.name })
+                    Either.Success(mappedBooks.distinctBy { it.name })
                 }
             }
 

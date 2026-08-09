@@ -38,10 +38,9 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -55,12 +54,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import digital.tonima.bibliadigital.R
 import digital.tonima.bibliadigital.domain.common.constants.PLAY_STORE_URL
-import digital.tonima.bibliadigital.domain.model.ChapterResponse
 import digital.tonima.bibliadigital.domain.model.Verse
+import digital.tonima.bibliadigital.ui.bible.BibleIntent
 import digital.tonima.bibliadigital.ui.bible.BibleViewModel
 import digital.tonima.bibliadigital.ui.components.AppBar
 import digital.tonima.bibliadigital.ui.components.ErrorScreen
@@ -74,25 +73,12 @@ fun BibleReading(
     chapterQuantity: Int,
     navController: NavHostController,
     viewModel: BibleViewModel,
-    loading: State<Boolean>,
 ) {
-    val showTutorial: State<Boolean> = viewModel.showTutorial.observeAsState(initial = true)
-    val selectedVerse: State<Verse?> = viewModel.selectedVerse.observeAsState(null)
-    val chapterState: State<ChapterResponse?> =
-        viewModel.chapter.observeAsState(initial = null)
-    val isSpeechEnable: State<Boolean> =
-        viewModel.isSpeechEnabled.observeAsState(initial = false)
-    val currentText: State<String> = viewModel.currentText.observeAsState(initial = "")
-    val currentChapter: State<Int> = viewModel.currentChapter.observeAsState(initial = chapterId)
-    val fontSizeState: State<TextUnit> = viewModel.fontSize.observeAsState(initial = 16.sp)
-    val showBottomBar =
-        remember {
-            mutableStateOf(true)
-        }
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val showBottomBar = remember { mutableStateOf(true) }
 
-    with(viewModel) {
-        getBookChapter(bookName, bookAbbrev, currentChapter.value)
-        setCurrentChapter(currentChapter.value)
+    LaunchedEffect(Unit) {
+        viewModel.sendIntent(BibleIntent.LoadChapter(bookName, bookAbbrev, chapterId))
     }
 
     Scaffold(
@@ -103,19 +89,20 @@ fun BibleReading(
                 exit = slideOutVertically(targetOffsetY = { -40 }),
             ) {
                 AppBar(
-                    title = "$bookName - ${stringResource(id = R.string.chapter)} ${currentChapter.value}",
+                    title = "$bookName - ${stringResource(id = R.string.chapter)} ${state.currentChapter}",
                     icon = Icons.Default.ArrowBack,
                 ) {
-                    viewModel.stopSpeech()
+                    viewModel.sendIntent(BibleIntent.StopSpeech)
                     navController.navigateUp()
                 }
             }
         },
-    ) {
+    ) { paddingValues ->
         Surface(
             modifier =
                 Modifier
                     .fillMaxSize()
+                    .padding(paddingValues)
                     .pointerInput(Unit) {
                         detectTapGestures(
                             onTap = {
@@ -125,8 +112,8 @@ fun BibleReading(
                     },
         ) {
             DropdownMenu(
-                expanded = showTutorial.value,
-                onDismissRequest = { viewModel.disableTutorials() },
+                expanded = state.showTutorial,
+                onDismissRequest = { viewModel.sendIntent(BibleIntent.DisableTutorial) },
             ) {
                 DropdownMenuItem(onClick = { }) {
                     Row {
@@ -136,19 +123,15 @@ fun BibleReading(
                     }
                 }
             }
-            if (loading.value) Loading()
-            if (chapterState.value == null && !loading.value) {
+            if (state.isLoading) Loading()
+            if (state.chapter == null && !state.isLoading) {
                 ErrorScreen {
-                    viewModel.getBookChapter(
-                        bookName,
-                        bookAbbrev,
-                        currentChapter.value,
-                    )
+                    viewModel.sendIntent(BibleIntent.LoadChapter(bookName, bookAbbrev, state.currentChapter))
                 }
             }
             val configuration = LocalConfiguration.current
             val isWideScreen = configuration.screenWidthDp > 600
-            val verses = chapterState.value?.verses ?: emptyList()
+            val verses = state.chapter?.verses ?: emptyList()
 
             if (isWideScreen) {
                 LazyVerticalGrid(
@@ -162,10 +145,10 @@ fun BibleReading(
                     items(verses) { verse ->
                         VerseItem(
                             verse,
-                            fontSizeState,
+                            state.fontSize,
                             { toggleNavigationMenusVisibility(showBottomBar) },
                         ) {
-                            viewModel.setSelectedVerse(verse)
+                            viewModel.sendIntent(BibleIntent.SetSelectedVerse(verse))
                         }
                     }
                     item(span = { GridItemSpan(maxLineSpan) }) {
@@ -181,10 +164,10 @@ fun BibleReading(
                     items(verses) { verse ->
                         VerseItem(
                             verse,
-                            fontSizeState,
+                            state.fontSize,
                             { toggleNavigationMenusVisibility(showBottomBar) },
                         ) {
-                            viewModel.setSelectedVerse(verse)
+                            viewModel.sendIntent(BibleIntent.SetSelectedVerse(verse))
                         }
                     }
                     if (showBottomBar.value) {
@@ -194,15 +177,15 @@ fun BibleReading(
                     }
                 }
             }
-            selectedVerse.value?.let {
-                ShareVerseMenu(verse = it, viewModel, bookName, chapterId)
+            state.selectedVerse?.let {
+                ShareVerseMenu(verse = it, viewModel, bookName, state.currentChapter)
             }
             BottomMenu(
                 viewModel,
-                isSpeechEnable,
-                currentText,
+                state.isSpeechEnabled,
+                state.currentText,
                 chapterQuantity,
-                currentChapter,
+                state.currentChapter,
                 showBottomBar,
             )
         }
@@ -216,10 +199,10 @@ fun toggleNavigationMenusVisibility(showBottomBar: MutableState<Boolean>) {
 @Composable
 fun BottomMenu(
     viewModel: BibleViewModel,
-    isSpeechEnable: State<Boolean>,
-    currentText: State<String>,
+    isSpeechEnable: Boolean,
+    currentText: String,
     chapterQuantity: Int,
-    currentChapter: State<Int>,
+    currentChapter: Int,
     showBottomBar: MutableState<Boolean>,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -233,7 +216,7 @@ fun BottomMenu(
             Row(
                 modifier =
                     Modifier.clickable {
-                        viewModel.decreaseFontSize()
+                        viewModel.sendIntent(BibleIntent.DecreaseFontSize)
                     },
             ) {
                 Text(
@@ -251,7 +234,7 @@ fun BottomMenu(
             Row(
                 modifier =
                     Modifier.clickable {
-                        viewModel.increaseFontSize()
+                        viewModel.sendIntent(BibleIntent.IncreaseFontSize)
                     },
             ) {
                 Text(
@@ -282,39 +265,34 @@ fun BottomMenu(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.padding(16.dp),
             ) {
-                currentChapter.value.let { currentChapter ->
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = null,
-                        modifier =
-                            Modifier.clickable {
-                                if (currentChapter > 1) {
-                                    viewModel.previousChapter()
-                                }
-                            },
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = null,
+                    modifier =
+                        Modifier.clickable {
+                            if (currentChapter > 1) {
+                                viewModel.sendIntent(BibleIntent.PreviousChapter)
+                            }
+                        },
+                )
                 Row(
                     modifier =
                         Modifier.clickable {
-                            if (!isSpeechEnable.value) {
-                                viewModel.textToSpeech(
-                                    context,
-                                    currentText.value,
-                                )
+                            if (!isSpeechEnable) {
+                                viewModel.sendIntent(BibleIntent.TextToSpeech(context, currentText))
                             } else {
-                                viewModel.stopSpeech()
+                                viewModel.sendIntent(BibleIntent.StopSpeech)
                             }
                         },
                 ) {
                     Icon(
-                        imageVector = if (isSpeechEnable.value) Icons.Filled.Clear else Icons.Filled.PlayArrow,
+                        imageVector = if (isSpeechEnable) Icons.Filled.Clear else Icons.Filled.PlayArrow,
                         contentDescription = null,
                     )
                     Spacer(modifier = Modifier.width(2.dp))
                     Text(
                         text =
-                            if (isSpeechEnable.value) {
+                            if (isSpeechEnable) {
                                 stringResource(id = R.string.stop_speech)
                             } else {
                                 stringResource(
@@ -338,18 +316,16 @@ fun BottomMenu(
                         text = stringResource(id = R.string.font_size),
                     )
                 }
-                currentChapter.value.let { currentChapter ->
-                    Icon(
-                        imageVector = Icons.Default.ArrowForward,
-                        contentDescription = null,
-                        modifier =
-                            Modifier.clickable {
-                                if (chapterQuantity > currentChapter) {
-                                    viewModel.nextChapter()
-                                }
-                            },
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.ArrowForward,
+                    contentDescription = null,
+                    modifier =
+                        Modifier.clickable {
+                            if (chapterQuantity > currentChapter) {
+                                viewModel.sendIntent(BibleIntent.NextChapter)
+                            }
+                        },
+                )
             }
         }
     }
@@ -358,7 +334,7 @@ fun BottomMenu(
 @Composable
 fun VerseItem(
     verse: Verse,
-    fontSize: State<TextUnit>,
+    fontSize: TextUnit,
     onTap: () -> Unit,
     onLongClick: ((verse: Verse) -> Unit)? = null,
 ) {
@@ -375,7 +351,7 @@ fun VerseItem(
                     }, onTap = { onTap() })
                 },
     ) {
-        Text(text = "${verse.number}. ${verse.text}", fontSize = fontSize.value)
+        Text(text = "${verse.number}. ${verse.text}", fontSize = fontSize)
     }
 }
 
@@ -394,7 +370,7 @@ fun ShareVerseMenu(
         expanded = expandedShareVerseMenu,
         onDismissRequest = {
             expandedShareVerseMenu = false
-            viewModel.clearSelectedVerse()
+            viewModel.sendIntent(BibleIntent.ClearSelectedVerse)
         },
     ) {
         DropdownMenuItem(onClick = {

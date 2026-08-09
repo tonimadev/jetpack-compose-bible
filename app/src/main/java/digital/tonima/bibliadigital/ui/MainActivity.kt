@@ -11,13 +11,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
-import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -30,6 +28,7 @@ import digital.tonima.bibliadigital.domain.common.constants.ARG_BOOK_NAME
 import digital.tonima.bibliadigital.domain.common.constants.ARG_CHAPTER_ID
 import digital.tonima.bibliadigital.domain.common.constants.ARG_CHAPTER_QUANTITY
 import digital.tonima.bibliadigital.domain.core.exception.Failure
+import digital.tonima.bibliadigital.ui.bible.BibleIntent
 import digital.tonima.bibliadigital.ui.bible.BibleViewModel
 import digital.tonima.bibliadigital.ui.bible.books.ListBooks
 import digital.tonima.bibliadigital.ui.bible.chapters.ListChapters
@@ -47,13 +46,12 @@ class MainActivity : ComponentActivity() {
 
         permissionLauncher =
             registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-                viewModel.getBooks()
+                viewModel.sendIntent(BibleIntent.LoadBooks)
             }
         callRequestPermissions()
 
         setContent {
             BibliaSagradaTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colors.background,
@@ -66,7 +64,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onBackPressed() {
         super.onBackPressed()
-        viewModel.stopSpeech()
+        viewModel.sendIntent(BibleIntent.StopSpeech)
     }
 
     private fun callRequestPermissions() {
@@ -78,23 +76,18 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun BibleApplication(viewModel: BibleViewModel) {
-    val failure: State<Failure?> = viewModel.failure.observeAsState(initial = null)
-    val loading: State<Boolean> = viewModel.loading.observeAsState(initial = true)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    val keyboardController = LocalSoftwareKeyboardController.current
-
-    failure.value?.let {
+    state.failure?.let {
         when (it) {
             is Failure.NetworkConnection -> {
                 Toast.makeText(
                     LocalContext.current,
                     stringResource(R.string.no_network),
                     Toast.LENGTH_LONG,
-                )
-                    .show()
+                ).show()
             }
             is Failure.ServerError -> {
                 Toast.makeText(
@@ -116,7 +109,7 @@ fun BibleApplication(viewModel: BibleViewModel) {
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = ListBooksScreen.route) {
         composable(route = ListBooksScreen.route) {
-            ListBooks(viewModel, navController, loading, keyboardController)
+            ListBooks(viewModel, navController)
         }
         composable(
             route = ListChaptersScreen.route,
@@ -134,15 +127,9 @@ fun BibleApplication(viewModel: BibleViewModel) {
                 ),
         ) { navBackStackEntry ->
             ListChapters(
-                navBackStackEntry.arguments?.getString(
-                    ARG_BOOK_NAME,
-                )!!,
-                navBackStackEntry.arguments?.getString(
-                    ARG_BOOK_ABBREV,
-                )!!,
-                navBackStackEntry.arguments?.getInt(
-                    ARG_CHAPTER_QUANTITY,
-                )!!,
+                navBackStackEntry.arguments?.getString(ARG_BOOK_NAME)!!,
+                navBackStackEntry.arguments?.getString(ARG_BOOK_ABBREV)!!,
+                navBackStackEntry.arguments?.getInt(ARG_CHAPTER_QUANTITY)!!,
                 navController,
                 viewModel,
             )
@@ -166,17 +153,12 @@ fun BibleApplication(viewModel: BibleViewModel) {
                 ),
         ) { navBackStackEntry ->
             BibleReading(
-                navBackStackEntry.arguments?.getString(
-                    ARG_BOOK_NAME,
-                )!!,
-                navBackStackEntry.arguments?.getString(
-                    ARG_BOOK_ABBREV,
-                )!!,
+                navBackStackEntry.arguments?.getString(ARG_BOOK_NAME)!!,
+                navBackStackEntry.arguments?.getString(ARG_BOOK_ABBREV)!!,
                 navBackStackEntry.arguments!!.getInt(ARG_CHAPTER_ID),
                 navBackStackEntry.arguments!!.getInt(ARG_CHAPTER_QUANTITY),
                 navController,
                 viewModel,
-                loading,
             )
         }
     }

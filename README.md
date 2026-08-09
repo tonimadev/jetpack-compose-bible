@@ -1,37 +1,45 @@
+# Bíblia Digital (Jetpack Compose)
 
-
-# Jetpack compose Bible
-
- <a href="https://play.google.com/store/apps/details?id=com.ipsoft.bibliasagrada" target="blank"><img align="center"
-            src="https://PlayBadges.pavi2410.me/badge/full?id=com.ipsoft.bibliasagrada"
-            alt="playtore link"  /></a>
-
-
-
-<a href="https://play.google.com/store/apps/details?id=com.ipsoft.bibliasagrada"><img src="https://github.com/AnthoniIP/Biblie/blob/master/screenshots/playstore.png" alt="Download on play store" width="200"></a>
+[![Android CI](https://github.com/AnthoniIP/Biblie/actions/workflows/android.yml/badge.svg)](https://github.com/AnthoniIP/Biblie/actions/workflows/android.yml)
 
 Simple and useful bible app for android, no ads, just reading.
+Simple and beautiful design, optimized for OLED screens with a dark mode focus.
 
-Simple and beaultful design, good for Oled phones with dark mode.
+## Modern Infrastructure & Architecture
 
-App ui made with Jetpack Compose.
+This project has been recently modernized to follow the latest Android development standards:
 
-App architecture is a combination of MVVM with Clean Arquitecture.
+- **Language & Toolchain:** Kotlin 2.x with Java 21 and Gradle 9.x.
+- **UI Framework:** 100% Jetpack Compose with Material Design.
+- **Architecture:** **MVI (Model-View-Intent)** with Clean Architecture.
+- **Build System:** Gradle Version Catalog (`libs.versions.toml`) for centralized dependency management.
+- **Dependency Injection:** Hilt (Dagger) using **KSP** (Kotlin Symbol Processing).
+- **Data Persistence:** Room Database with KSP.
+- **Local Settings:** DataStore Preferences.
+- **Quality Gates:**
+  - **Detekt:** Static code analysis.
+  - **Spotless (Ktlint):** Automated code formatting.
+  - **MockK:** Comprehensive unit testing.
+  - **GitHub Actions:** CI/CD pipeline for automated verification.
 
-## Package estructure
+## Architecture: MVI
 
-![Package estructure Screenshot](https://github.com/AnthoniIP/Biblie/blob/develop/screenshots/Captura%20de%20Tela%202022-07-28%20%C3%A0s%2000.46.20.png)
+The app follows the MVI pattern to ensure a predictable state and unidirectional data flow:
 
+- **State:** Centralized immutable UI State (`BibleState`).
+- **Intent:** User actions or system events expressed as sealed classes (`BibleIntent`).
+- **Event:** One-time UI events like showing errors or navigation (`BibleEvent`).
 
+## Features
 
+- Offline reading (Room DB cache).
+- Text-to-Speech support.
+- Custom font size management.
+- **Adaptive Layout:** 2-column layout for tablets and foldable devices.
+- No ads, simple and clean interface.
 
 ## Screenshots
 
-![App Screenshot](https://github.com/AnthoniIP/Biblie/blob/develop/screenshots/Screenshot_1658978743_google-pixel4-clearlywhite-portrait.png)
-![App Screenshot](https://github.com/AnthoniIP/Biblie/blob/develop/screenshots/Screenshot_1658978778_google-pixel4-clearlywhite-portrait.png)
-![App Screenshot](https://github.com/AnthoniIP/Biblie/blob/develop/screenshots/Screenshot_1658978754_google-pixel4-clearlywhite-portrait.png)
-![App Screenshot](https://github.com/AnthoniIP/Biblie/blob/develop/screenshots/Screenshot_1658978785_google-pixel4-clearlywhite-portrait.png)
-
-
-
-
+![List Books](https://github.com/AnthoniIP/Biblie/blob/develop/screenshots/Screenshot_1658978743_google-pixel4-clearlywhite-portrait.png)
+![List Chapters](https://github.com/AnthoniIP/Biblie/blob/develop/screenshots/Screenshot_1658978778_google-pixel4-clearlywhite-portrait.png)
+![Reading](https://github.com/AnthoniIP/Biblie/blob/develop/screenshots/Screenshot_1658978754_google-pixel4-clearlywhite-portrait.png)
