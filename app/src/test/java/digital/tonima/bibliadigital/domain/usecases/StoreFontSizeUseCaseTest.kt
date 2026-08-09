@@ -10,29 +10,31 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class DisableShowPressAndHoldVerseTutorialUseCaseTest {
+class StoreFontSizeUseCaseTest {
     private val mockDataStore: PreferencesDataStore = mockk()
-    private val useCase = DisableShowPressAndHoldVerseTutorialUseCase(mockDataStore)
+    private val useCase = StoreFontSizeUseCase(mockDataStore)
 
     @Test
-    fun `when run with params None should return success`() =
+    fun `when run should store font size`() =
         runBlocking {
-            coEvery { mockDataStore.disableShowPressAndHoldVerseTutorial() } returns Either.Success(Unit)
+            val params = StoreFontSizeUseCase.Params(20)
+            coEvery { mockDataStore.storeFontSize(params.fontSize) } returns Either.Success(Unit)
 
-            val result = useCase.run(UseCase.None())
+            val result = useCase.run(params)
 
-            coVerify { mockDataStore.disableShowPressAndHoldVerseTutorial() }
+            coVerify { mockDataStore.storeFontSize(params.fontSize) }
             assertTrue(result is Either.Success)
         }
 
     @Test
     fun `when data store returns failure should return failure`() =
         runBlocking {
-            coEvery { mockDataStore.disableShowPressAndHoldVerseTutorial() } returns Either.Fail(Failure.Error)
+            val params = StoreFontSizeUseCase.Params(20)
+            coEvery { mockDataStore.storeFontSize(params.fontSize) } returns Either.Fail(Failure.Error)
 
-            val result = useCase.run(UseCase.None())
+            val result = useCase.run(params)
 
-            coVerify { mockDataStore.disableShowPressAndHoldVerseTutorial() }
+            coVerify { mockDataStore.storeFontSize(params.fontSize) }
             assertTrue(result is Either.Fail)
         }
 }

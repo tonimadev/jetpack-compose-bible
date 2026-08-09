@@ -1,9 +1,14 @@
 name: Android CI
 
-on: [push]
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
 
 jobs:
   build:
+    name: Build and Verify
     runs-on: ubuntu-latest
 
     steps:
@@ -20,8 +25,14 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build with Gradle
+      - name: Verify Code Style (Spotless)
+        run: ./gradlew spotlessCheck
+
+      - name: Static Analysis (Detekt)
+        run: ./gradlew detekt
+
+      - name: Build Debug APK
         run: ./gradlew assembleDebug
 
-      - name: Run tests
+      - name: Run Unit Tests
         run: ./gradlew testDebugUnitTest

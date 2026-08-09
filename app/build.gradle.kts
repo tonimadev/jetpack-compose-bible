@@ -130,6 +130,9 @@ dependencies {
 
     // Test
     testImplementation(libs.junit)
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockk)
 }
 
 apply(from = "../spotless.gradle")
