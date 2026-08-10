@@ -40,6 +40,8 @@ The app follows the MVI pattern to ensure a predictable state and unidirectional
 
 ## Screenshots
 
-![List Books](https://github.com/AnthoniIP/Biblie/blob/develop/screenshots/Screenshot_1658978743_google-pixel4-clearlywhite-portrait.png)
-![List Chapters](https://github.com/AnthoniIP/Biblie/blob/develop/screenshots/Screenshot_1658978778_google-pixel4-clearlywhite-portrait.png)
-![Reading](https://github.com/AnthoniIP/Biblie/blob/develop/screenshots/Screenshot_1658978754_google-pixel4-clearlywhite-portrait.png)
+<p align="center">
+  <img src="https://github.com/AnthoniIP/Biblie/blob/develop/screenshots/Screenshot_1658978743_google-pixel4-clearlywhite-portrait.png" alt="List Books" width="250"/>
+  <img src="https://github.com/AnthoniIP/Biblie/blob/develop/screenshots/Screenshot_1658978778_google-pixel4-clearlywhite-portrait.png" alt="List Chapters" width="250"/>
+  <img src="https://github.com/AnthoniIP/Biblie/blob/develop/screenshots/Screenshot_1658978754_google-pixel4-clearlywhite-portrait.png" alt="Reading" width="250"/>
+</p>

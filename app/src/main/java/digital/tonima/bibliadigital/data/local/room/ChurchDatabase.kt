@@ -9,6 +9,7 @@ import digital.tonima.bibliadigital.domain.model.Book
 import digital.tonima.bibliadigital.domain.model.BookResponse
 import digital.tonima.bibliadigital.domain.model.Chapter
 import digital.tonima.bibliadigital.domain.model.ChapterResponse
+import digital.tonima.bibliadigital.domain.model.FavoriteVerse
 import digital.tonima.bibliadigital.domain.model.Verse
 import javax.inject.Singleton
 
@@ -22,6 +23,7 @@ import javax.inject.Singleton
             ChapterResponse::class,
             Book::class,
             AbbrevRoomModel::class,
+            FavoriteVerse::class,
         ],
     version = BIBLE_DB_VERSION,
     exportSchema = false,
@@ -31,10 +33,11 @@ abstract class ChurchDatabase : RoomDatabase() {
     abstract fun churchDao(): ChurchDao
 
     companion object {
-        const val BIBLE_DB_VERSION = 19
+        const val BIBLE_DB_VERSION = 20
         const val BIBLE_DB_NAME = "bible"
         const val BOOKS_TABLE = "books"
         const val CHAPTERS_TABLE = "chapters"
         const val ABBREVS_TABLE = "abbrevsRoom"
+        const val FAVORITES_TABLE = "favorites"
     }
 }

@@ -10,6 +10,7 @@ import digital.tonima.bibliadigital.data.local.room.ChurchDatabase.Companion.CHA
 import digital.tonima.bibliadigital.domain.model.AbbrevRoomModel
 import digital.tonima.bibliadigital.domain.model.BookResponse
 import digital.tonima.bibliadigital.domain.model.ChapterResponse
+import digital.tonima.bibliadigital.domain.model.FavoriteVerse
 
 @Dao
 interface ChurchDao {
@@ -22,6 +23,9 @@ interface ChurchDao {
     @Query(ALL_ABBREVS_QUERY)
     fun getAllAbbrevs(): List<AbbrevRoomModel>
 
+    @Query("SELECT * FROM favorites ORDER BY timestamp DESC")
+    fun getAllFavorites(): List<FavoriteVerse>
+
     @Insert(onConflict = REPLACE)
     fun insertAllBooks(books: List<BookResponse>)
 
@@ -30,6 +34,16 @@ interface ChurchDao {
 
     @Insert(onConflict = REPLACE)
     fun insertAllAbbrevs(abbrevs: List<AbbrevRoomModel>)
+
+    @Insert(onConflict = REPLACE)
+    fun insertFavorite(favorite: FavoriteVerse)
+
+    @Query("DELETE FROM favorites WHERE bookName = :bookName AND chapter = :chapter AND verseNumber = :verseNumber")
+    fun deleteFavorite(
+        bookName: String,
+        chapter: Int,
+        verseNumber: Int,
+    )
 
     companion object {
         const val ALL_CHAPTERS_QUERY = "SELECT * FROM $CHAPTERS_TABLE"

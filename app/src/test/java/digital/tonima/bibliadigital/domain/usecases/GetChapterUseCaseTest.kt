@@ -21,7 +21,7 @@ class GetChapterUseCaseTest {
     @Test
     fun `when run should return a ChapterResponse`() =
         runBlocking {
-            val params = GetChapterUseCase.Params("Genesis", "gn", 1)
+            val params = GetChapterUseCase.Params("Genesis", "gn", 1, "nvi")
             val mockChapterResponse =
                 ChapterResponse(
                     book = Book(id = 1, abbrev = "gn", name = "Genesis"),
@@ -29,12 +29,12 @@ class GetChapterUseCaseTest {
                     verses = emptyList(),
                 )
 
-            coEvery { mockRepository.getChapter(params.bookName, params.bookAbbrev, params.chapterId) }
+            coEvery { mockRepository.getChapter(params.bookName, params.bookAbbrev, params.chapterId, params.version) }
                 .returns(Either.Success(mockChapterResponse))
 
             val result = useCase.run(params)
 
-            coVerify { mockRepository.getChapter(params.bookName, params.bookAbbrev, params.chapterId) }
+            coVerify { mockRepository.getChapter(params.bookName, params.bookAbbrev, params.chapterId, params.version) }
             assertTrue(result is Either.Success)
             assertEquals(mockChapterResponse, (result as Either.Success).b)
         }
@@ -42,14 +42,14 @@ class GetChapterUseCaseTest {
     @Test
     fun `when repository returns failure should return failure`() =
         runBlocking {
-            val params = GetChapterUseCase.Params("Genesis", "gn", 1)
+            val params = GetChapterUseCase.Params("Genesis", "gn", 1, "nvi")
 
-            coEvery { mockRepository.getChapter(params.bookName, params.bookAbbrev, params.chapterId) }
+            coEvery { mockRepository.getChapter(params.bookName, params.bookAbbrev, params.chapterId, params.version) }
                 .returns(Either.Fail(Failure.Error))
 
             val result = useCase.run(params)
 
-            coVerify { mockRepository.getChapter(params.bookName, params.bookAbbrev, params.chapterId) }
+            coVerify { mockRepository.getChapter(params.bookName, params.bookAbbrev, params.chapterId, params.version) }
             assertTrue(result is Either.Fail)
         }
 }

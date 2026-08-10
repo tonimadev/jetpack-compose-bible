@@ -19,6 +19,11 @@ class PreferencesDataStore(private val context: Context) {
     private val showPressAndHoldVerseTutorial =
         booleanPreferencesKey("show_press_and_hold_verse_tutorial")
     private val selectedVersion = stringPreferencesKey("selected_version")
+    private val lastReadBookName = stringPreferencesKey("last_read_book_name")
+    private val lastReadBookAbbrev = stringPreferencesKey("last_read_book_abbrev")
+    private val lastReadChapterId = intPreferencesKey("last_read_chapter_id")
+    private val lastReadChapterQuantity = intPreferencesKey("last_read_chapter_quantity")
+    private val dailyVerseDate = stringPreferencesKey("daily_verse_date")
 
     suspend fun storeFontSize(data: Int): Either<Failure, Unit> {
         context.preferencesDataStore.edit { preferences ->
@@ -64,6 +69,45 @@ class PreferencesDataStore(private val context: Context) {
             }.first(),
         )
     }
+
+    suspend fun storeReadingHistory(
+        bookName: String,
+        bookAbbrev: String,
+        chapterId: Int,
+        chapterQuantity: Int,
+    ): Either<Failure, Unit> {
+        context.preferencesDataStore.edit { preferences ->
+            preferences[lastReadBookName] = bookName
+            preferences[lastReadBookAbbrev] = bookAbbrev
+            preferences[lastReadChapterId] = chapterId
+            preferences[lastReadChapterQuantity] = chapterQuantity
+        }
+        return Either.Success(Unit)
+    }
+
+    suspend fun readReadingHistory(): Either<Failure, ReadingHistory?> {
+        val prefs = context.preferencesDataStore.data.first()
+        val name = prefs[lastReadBookName]
+        val abbrev = prefs[lastReadBookAbbrev]
+        val chapter = prefs[lastReadChapterId]
+        val quantity = prefs[lastReadChapterQuantity]
+
+        val history =
+            if (name != null && abbrev != null && chapter != null && quantity != null) {
+                ReadingHistory(name, abbrev, chapter, quantity)
+            } else {
+                null
+            }
+
+        return Either.Success(history)
+    }
 }
+
+data class ReadingHistory(
+    val bookName: String,
+    val bookAbbrev: String,
+    val chapterId: Int,
+    val chapterQuantity: Int,
+)
 
 private val Context.preferencesDataStore: DataStore<Preferences> by preferencesDataStore("preferences")

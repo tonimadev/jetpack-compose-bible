@@ -15,12 +15,16 @@ import digital.tonima.bibliadigital.domain.model.Verse
 import digital.tonima.bibliadigital.domain.usecases.DisableShowPressAndHoldVerseTutorialUseCase
 import digital.tonima.bibliadigital.domain.usecases.GetBooksUseCase
 import digital.tonima.bibliadigital.domain.usecases.GetChapterUseCase
+import digital.tonima.bibliadigital.domain.usecases.GetFavoritesUseCase
 import digital.tonima.bibliadigital.domain.usecases.GetFontSizeUseCase
+import digital.tonima.bibliadigital.domain.usecases.GetReadingHistoryUseCase
 import digital.tonima.bibliadigital.domain.usecases.GetSelectedVersionUseCase
 import digital.tonima.bibliadigital.domain.usecases.GetShowPressAndHoldVerseTutorialUseCase
 import digital.tonima.bibliadigital.domain.usecases.GetVersionsUseCase
 import digital.tonima.bibliadigital.domain.usecases.StoreFontSizeUseCase
+import digital.tonima.bibliadigital.domain.usecases.StoreReadingHistoryUseCase
 import digital.tonima.bibliadigital.domain.usecases.StoreSelectedVersionUseCase
+import digital.tonima.bibliadigital.domain.usecases.ToggleFavoriteUseCase
 import digital.tonima.bibliadigital.domain.usecases.UseCase
 import digital.tonima.bibliadigital.ui.BaseViewModel
 import timber.log.Timber
@@ -30,6 +34,7 @@ import javax.inject.Inject
 @HiltViewModel
 class BibleViewModel
     @Inject
+    @Suppress("LongParameterList")
     constructor(
         private val getBooksUseCase: GetBooksUseCase,
         private val getChapterUseCase: GetChapterUseCase,
@@ -40,6 +45,10 @@ class BibleViewModel
         private val getVersionsUseCase: GetVersionsUseCase,
         private val getSelectedVersionUseCase: GetSelectedVersionUseCase,
         private val storeSelectedVersionUseCase: StoreSelectedVersionUseCase,
+        private val storeReadingHistoryUseCase: StoreReadingHistoryUseCase,
+        private val getReadingHistoryUseCase: GetReadingHistoryUseCase,
+        private val getFavoritesUseCase: GetFavoritesUseCase,
+        private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     ) : BaseViewModel<BibleState, BibleIntent, BibleEvent>() {
         private var textToSpeech: TextToSpeech? = null
 
@@ -51,6 +60,8 @@ class BibleViewModel
             getShowTutorialValue()
             getSelectedVersion()
             getVersions()
+            loadHistory()
+            loadFavorites()
         }
 
         override fun handleIntent(intent: BibleIntent) {
@@ -69,6 +80,9 @@ class BibleViewModel
                 is BibleIntent.DisableTutorial -> disableTutorials()
                 is BibleIntent.LoadVersions -> getVersions()
                 is BibleIntent.ChangeVersion -> changeVersion(intent.version)
+                is BibleIntent.LoadHistory -> loadHistory()
+                is BibleIntent.LoadFavorites -> loadFavorites()
+                is BibleIntent.ToggleFavorite -> toggleFavorite(intent.verse, intent.bookName, intent.chapter)
                 is BibleIntent.TextToSpeech -> textToSpeech(intent.context, intent.text)
                 is BibleIntent.StopSpeech -> stopSpeech()
             }
@@ -210,6 +224,60 @@ class BibleViewModel
                     chapter = chapterResponse,
                     currentText = chapterResponse.verses.joinToString(" ") { it.text },
                 )
+            }
+            saveHistory(chapterResponse)
+        }
+
+        private fun saveHistory(chapterResponse: ChapterResponse) {
+            // Find book to get total chapters (needed for history navigation)
+            val book = uiState.value.books.find { it.abbrev == chapterResponse.book.abbrev }
+            val quantity = book?.chapters ?: 50 // fallback
+
+            storeReadingHistoryUseCase(
+                StoreReadingHistoryUseCase.Params(
+                    bookName = chapterResponse.book.name,
+                    bookAbbrev = chapterResponse.book.abbrev,
+                    chapterId = chapterResponse.chapter.number,
+                    chapterQuantity = quantity,
+                ),
+                viewModelScope,
+            ) { /* ignore result */ }
+        }
+
+        private fun loadHistory() {
+            getReadingHistoryUseCase(
+                UseCase.None(),
+                viewModelScope,
+            ) {
+                it.fold(::handleBackgroundFailure) { history ->
+                    setState { copy(history = history) }
+                }
+            }
+        }
+
+        private fun loadFavorites() {
+            getFavoritesUseCase(
+                UseCase.None(),
+                viewModelScope,
+            ) {
+                it.fold(::handleBackgroundFailure) { favorites ->
+                    setState { copy(favorites = favorites) }
+                }
+            }
+        }
+
+        private fun toggleFavorite(
+            verse: Verse,
+            bookName: String,
+            chapter: Int,
+        ) {
+            toggleFavoriteUseCase(
+                ToggleFavoriteUseCase.Params(bookName, chapter, verse.number, verse.text),
+                viewModelScope,
+            ) {
+                it.fold(::handleFailure) {
+                    loadFavorites() // Reload list
+                }
             }
         }
 

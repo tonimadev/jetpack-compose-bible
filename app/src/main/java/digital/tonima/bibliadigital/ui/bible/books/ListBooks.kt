@@ -1,37 +1,50 @@
 package digital.tonima.bibliadigital.ui.bible.books
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.Card
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import digital.tonima.bibliadigital.R
@@ -45,6 +58,7 @@ import digital.tonima.bibliadigital.ui.components.AppBar
 import digital.tonima.bibliadigital.ui.components.ErrorScreen
 import digital.tonima.bibliadigital.ui.components.Loading
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ListBooks(
     viewModel: BibleViewModel,
@@ -57,17 +71,16 @@ fun ListBooks(
     Scaffold(topBar = {
         AppBar(
             title = stringResource(id = R.string.app_name),
-            icon = Icons.Default.Home,
+            icon = Icons.AutoMirrored.Filled.MenuBook,
         )
     }) { paddingValues ->
         Surface(
             modifier = Modifier.fillMaxSize().padding(paddingValues),
+            color = MaterialTheme.colors.background,
         ) {
             if (state.isLoading) Loading()
+
             Column {
-                if (state.books.isEmpty() && !state.isLoading) {
-                    ErrorScreen { viewModel.sendIntent(LoadBooks) }
-                }
                 SearchView(
                     state = textState,
                     onSearch = { query ->
@@ -81,14 +94,105 @@ fun ListBooks(
                         viewModel.sendIntent(ClearFilteredBooks)
                     },
                 )
-                LazyColumn {
-                    items(state.filteredBooks ?: state.books) { book ->
-                        BookItem(book, state.fontSize) {
-                            keyboardController?.hide()
-                            navController.navigate("chapters_list/${book.name}/${book.abbrev}/${book.chapters}")
+
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    if (state.lastSearch.isBlank()) {
+                        state.history?.let { history ->
+                            item {
+                                HistoryCard(history) {
+                                    navController.navigate(
+                                        "reading" +
+                                            "/${history.bookName}" +
+                                            "/${history.bookAbbrev}" +
+                                            "/${history.chapterId}" +
+                                            "/${history.chapterQuantity}",
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    val booksToDisplay = state.filteredBooks ?: state.books
+
+                    if (booksToDisplay.isEmpty() && !state.isLoading) {
+                        item {
+                            ErrorScreen { viewModel.sendIntent(LoadBooks) }
+                        }
+                    }
+
+                    val groupedBooks = booksToDisplay.groupBy { it.testament }
+
+                    groupedBooks.forEach { (testament, books) ->
+                        stickyHeader {
+                            TestamentHeader(testament)
+                        }
+                        items(books) { book ->
+                            BookItem(book, state.fontSize) {
+                                keyboardController?.hide()
+                                navController.navigate("chapters_list/${book.name}/${book.abbrev}/${book.chapters}")
+                            }
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun TestamentHeader(testament: String) {
+    val title = if (testament == "VT") "Velho Testamento" else "Novo Testamento"
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colors.surface.copy(alpha = 0.95f),
+    ) {
+        Text(
+            text = title,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.subtitle2,
+            color = MaterialTheme.colors.primary,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+@Composable
+fun HistoryCard(
+    history: digital.tonima.bibliadigital.data.datastore.ReadingHistory,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .clickable { onClick() },
+        elevation = 4.dp,
+        shape = RoundedCornerShape(12.dp),
+        backgroundColor = MaterialTheme.colors.surface,
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Default.History,
+                contentDescription = null,
+                tint = MaterialTheme.colors.primary,
+                modifier = Modifier.size(32.dp),
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = "Continuar lendo",
+                    style = MaterialTheme.typography.caption,
+                    color = Color.Gray,
+                )
+                Text(
+                    text = "${history.bookName}, Capítulo ${history.chapterId}",
+                    style = MaterialTheme.typography.body1,
+                    fontWeight = FontWeight.Medium,
+                )
             }
         }
     }
@@ -102,34 +206,47 @@ fun SearchView(
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    Surface(modifier = Modifier.fillMaxWidth()) {
+    Surface(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+        color = MaterialTheme.colors.surface,
+        shape = RoundedCornerShape(8.dp),
+        elevation = 2.dp,
+    ) {
         TextField(
             value = state.value,
             onValueChange = { value: TextFieldValue ->
                 state.value = value
                 onSearch(value.text)
             },
-            label = {
-                Text(stringResource(id = R.string.find_book))
+            placeholder = {
+                Text(stringResource(id = R.string.find_book), color = Color.Gray)
+            },
+            leadingIcon = {
+                Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray)
             },
             trailingIcon = {
                 if (state.value.text.isNotBlank()) {
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = null,
-                        modifier =
-                            Modifier.clickable {
-                                onDeleteClick()
-                            },
+                        modifier = Modifier.clickable { onDeleteClick() },
+                        tint = Color.Gray,
                     )
                 }
             },
             singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions =
-                KeyboardActions(
-                    onDone = { keyboardController?.hide() },
+            modifier = Modifier.fillMaxWidth(),
+            colors =
+                androidx.compose.material.TextFieldDefaults.textFieldColors(
+                    backgroundColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
                 ),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
         )
     }
 }
@@ -146,11 +263,34 @@ fun BookItem(
         onClick = onBookClick,
     ) {
         Row(
-            modifier = Modifier.padding(8.dp),
+            modifier = Modifier.padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = book.name, fontSize = fontSize)
-            Text(text = book.abbrev, fontSize = fontSize)
+            Column {
+                Text(
+                    text = book.name,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    text = "${book.chapters} capítulos",
+                    style = MaterialTheme.typography.caption,
+                    color = Color.Gray,
+                )
+            }
+            Surface(
+                color = MaterialTheme.colors.primary.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(4.dp),
+            ) {
+                Text(
+                    text = book.abbrev.uppercase(),
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colors.primary,
+                )
+            }
         }
     }
 }

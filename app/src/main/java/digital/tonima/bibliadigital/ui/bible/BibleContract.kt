@@ -3,9 +3,11 @@ package digital.tonima.bibliadigital.ui.bible
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
+import digital.tonima.bibliadigital.data.datastore.ReadingHistory
 import digital.tonima.bibliadigital.domain.core.exception.Failure
 import digital.tonima.bibliadigital.domain.model.BookResponse
 import digital.tonima.bibliadigital.domain.model.ChapterResponse
+import digital.tonima.bibliadigital.domain.model.FavoriteVerse
 import digital.tonima.bibliadigital.domain.model.Verse
 import digital.tonima.bibliadigital.domain.model.Version
 import digital.tonima.bibliadigital.ui.UiEvent
@@ -28,6 +30,8 @@ data class BibleState(
     val showTutorial: Boolean = true,
     val selectedVerse: Verse? = null,
     val failure: Failure? = null,
+    val history: ReadingHistory? = null,
+    val favorites: List<FavoriteVerse> = emptyList(),
 ) : UiState
 
 sealed class BibleIntent : UiIntent {
@@ -58,6 +62,12 @@ sealed class BibleIntent : UiIntent {
     object LoadVersions : BibleIntent()
 
     data class ChangeVersion(val version: String) : BibleIntent()
+
+    object LoadHistory : BibleIntent()
+
+    object LoadFavorites : BibleIntent()
+
+    data class ToggleFavorite(val verse: Verse, val bookName: String, val chapter: Int) : BibleIntent()
 
     data class TextToSpeech(val context: android.content.Context, val text: String) : BibleIntent()
 
