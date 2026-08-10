@@ -41,7 +41,7 @@ The app follows the MVI pattern to ensure a predictable state and unidirectional
 ## Screenshots
 
 <p align="center">
-  <img src="https://github.com/AnthoniIP/Biblie/blob/develop/screenshots/Screenshot_1658978743_google-pixel4-clearlywhite-portrait.png" alt="List Books" width="250"/>
-  <img src="https://github.com/AnthoniIP/Biblie/blob/develop/screenshots/Screenshot_1658978778_google-pixel4-clearlywhite-portrait.png" alt="List Chapters" width="250"/>
-  <img src="https://github.com/AnthoniIP/Biblie/blob/develop/screenshots/Screenshot_1658978754_google-pixel4-clearlywhite-portrait.png" alt="Reading" width="250"/>
+  <img src="https://github.com/tonimadev/jetpack-compose-bible/blob/master/screenshots/Screenshot_20260810_020319.png" alt="List Books" width="250"/>
+  <img src="https://github.com/tonimadev/jetpack-compose-bible/blob/master/screenshots/Screenshot_20260810_020333.png" alt="List Chapters" width="250"/>
+  <img src="https://github.com/tonimadev/jetpack-compose-bible/blob/master/screenshots/Screenshot_20260810_020342.png" alt="Reading" width="250"/>
 </p>
