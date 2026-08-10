@@ -12,11 +12,12 @@ class GetChapterUseCase
         private val bibleRepository: BibleRepository,
     ) : UseCase<ChapterResponse, GetChapterUseCase.Params>() {
         override suspend fun run(params: Params): Either<Failure, ChapterResponse> =
-            bibleRepository.getChapter(params.bookName, params.bookAbbrev, params.chapterId)
+            bibleRepository.getChapter(params.bookName, params.bookAbbrev, params.chapterId, params.version)
 
         data class Params(
             val bookName: String,
             val bookAbbrev: String,
             val chapterId: Int,
+            val version: String,
         )
     }

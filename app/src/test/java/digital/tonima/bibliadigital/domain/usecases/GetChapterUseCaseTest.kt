@@ -2,7 +2,6 @@ package digital.tonima.bibliadigital.domain.usecases
 
 import digital.tonima.bibliadigital.domain.core.exception.Failure
 import digital.tonima.bibliadigital.domain.core.function.Either
-import digital.tonima.bibliadigital.domain.model.Abbrev
 import digital.tonima.bibliadigital.domain.model.Book
 import digital.tonima.bibliadigital.domain.model.Chapter
 import digital.tonima.bibliadigital.domain.model.ChapterResponse
@@ -25,7 +24,7 @@ class GetChapterUseCaseTest {
             val params = GetChapterUseCase.Params("Genesis", "gn", 1)
             val mockChapterResponse =
                 ChapterResponse(
-                    book = Book(id = 1, abbrev = Abbrev(pt = "gn"), name = "Genesis"),
+                    book = Book(id = 1, abbrev = "gn", name = "Genesis"),
                     chapter = Chapter(number = 1, verses = 31),
                     verses = emptyList(),
                 )

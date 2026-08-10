@@ -26,10 +26,10 @@ interface ChurchDao {
     fun insertAllBooks(books: List<BookResponse>)
 
     @Insert(onConflict = REPLACE)
-    fun insertAllChapters(vararg chapters: ChapterResponse)
+    fun insertAllChapters(chapters: List<ChapterResponse>)
 
     @Insert(onConflict = REPLACE)
-    fun insertAllAbbrevs(vararg abbrevs: AbbrevRoomModel)
+    fun insertAllAbbrevs(abbrevs: List<AbbrevRoomModel>)
 
     companion object {
         const val ALL_CHAPTERS_QUERY = "SELECT * FROM $CHAPTERS_TABLE"

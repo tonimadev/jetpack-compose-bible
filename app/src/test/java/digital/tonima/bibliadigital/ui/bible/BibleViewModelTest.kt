@@ -2,7 +2,6 @@ package digital.tonima.bibliadigital.ui.bible
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import digital.tonima.bibliadigital.domain.core.function.Either
-import digital.tonima.bibliadigital.domain.model.Abbrev
 import digital.tonima.bibliadigital.domain.model.BookResponse
 import digital.tonima.bibliadigital.domain.usecases.DisableShowPressAndHoldVerseTutorialUseCase
 import digital.tonima.bibliadigital.domain.usecases.GetBooksUseCase
@@ -88,7 +87,7 @@ class BibleViewModelTest {
     @Test
     fun `when LoadBooks intent is sent should update books in state`() =
         runTest {
-            val mockBooks = listOf(BookResponse(1, Abbrev(pt = "gn"), name = "Genesis"))
+            val mockBooks = listOf(BookResponse(1, "gn", name = "Genesis"))
             coEvery { getBooksUseCase(any(), any(), any()) } coAnswers {
                 thirdArg<(Either<*, List<BookResponse>>) -> Unit>().invoke(Either.Success(mockBooks))
             }

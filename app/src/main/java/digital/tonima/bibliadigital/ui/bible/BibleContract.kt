@@ -7,6 +7,7 @@ import digital.tonima.bibliadigital.domain.core.exception.Failure
 import digital.tonima.bibliadigital.domain.model.BookResponse
 import digital.tonima.bibliadigital.domain.model.ChapterResponse
 import digital.tonima.bibliadigital.domain.model.Verse
+import digital.tonima.bibliadigital.domain.model.Version
 import digital.tonima.bibliadigital.ui.UiEvent
 import digital.tonima.bibliadigital.ui.UiIntent
 import digital.tonima.bibliadigital.ui.UiState
@@ -15,6 +16,8 @@ import digital.tonima.bibliadigital.ui.UiState
 data class BibleState(
     val books: List<BookResponse> = emptyList(),
     val filteredBooks: List<BookResponse>? = null,
+    val versions: List<Version> = emptyList(),
+    val selectedVersion: String = "nvi",
     val chapter: ChapterResponse? = null,
     val fontSize: TextUnit = 16.sp,
     val currentChapter: Int = 1,
@@ -51,6 +54,10 @@ sealed class BibleIntent : UiIntent {
     object ClearSelectedVerse : BibleIntent()
 
     object DisableTutorial : BibleIntent()
+
+    object LoadVersions : BibleIntent()
+
+    data class ChangeVersion(val version: String) : BibleIntent()
 
     data class TextToSpeech(val context: android.content.Context, val text: String) : BibleIntent()
 

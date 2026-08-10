@@ -1,13 +1,16 @@
 package digital.tonima.bibliadigital.ui
 
+import android.Manifest.permission.INTERNET
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
@@ -42,6 +45,7 @@ class MainActivity : ComponentActivity() {
     private val viewModel: BibleViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
         permissionLauncher =
@@ -53,7 +57,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             BibliaSagradaTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().safeDrawingPadding(),
                     color = MaterialTheme.colors.background,
                 ) {
                     BibleApplication(viewModel)
@@ -62,15 +66,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onBackPressed() {
-        super.onBackPressed()
-        viewModel.sendIntent(BibleIntent.StopSpeech)
-    }
-
     private fun callRequestPermissions() {
         permissionLauncher.launch(
             arrayOf(
-                android.Manifest.permission.INTERNET,
+                INTERNET,
             ),
         )
     }

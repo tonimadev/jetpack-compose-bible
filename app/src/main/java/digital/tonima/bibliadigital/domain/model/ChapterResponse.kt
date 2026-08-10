@@ -13,6 +13,8 @@ import javax.inject.Singleton
 data class ChapterResponse(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
+    @SerializedName("version")
+    val version: String = "",
     @SerializedName("book")
     val book: Book = Book(),
     @SerializedName("chapter")

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
@@ -22,6 +23,8 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.Card
 import androidx.compose.material.Divider
 import androidx.compose.material.DropdownMenu
@@ -31,13 +34,14 @@ import androidx.compose.material.Scaffold
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -76,9 +80,22 @@ fun BibleReading(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val showBottomBar = remember { mutableStateOf(true) }
+    val pagerState = rememberPagerState(initialPage = chapterId - 1) { chapterQuantity }
 
-    LaunchedEffect(Unit) {
-        viewModel.sendIntent(BibleIntent.LoadChapter(bookName, bookAbbrev, chapterId))
+    LaunchedEffect(pagerState.currentPage) {
+        viewModel.sendIntent(BibleIntent.LoadChapter(bookName, bookAbbrev, pagerState.currentPage + 1))
+    }
+
+    LaunchedEffect(state.currentChapter) {
+        if (state.currentChapter - 1 != pagerState.currentPage) {
+            pagerState.animateScrollToPage(state.currentChapter - 1)
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.sendIntent(BibleIntent.StopSpeech)
+        }
     }
 
     Scaffold(
@@ -90,7 +107,7 @@ fun BibleReading(
             ) {
                 AppBar(
                     title = "$bookName - ${stringResource(id = R.string.chapter)} ${state.currentChapter}",
-                    icon = Icons.Default.ArrowBack,
+                    icon = Icons.AutoMirrored.Filled.ArrowBack,
                 ) {
                     viewModel.sendIntent(BibleIntent.StopSpeech)
                     navController.navigateUp()
@@ -111,6 +128,73 @@ fun BibleReading(
                         )
                     },
         ) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+                beyondViewportPageCount = 1,
+            ) { page ->
+                val isCurrentPage = state.currentChapter == page + 1
+
+                if (state.isLoading && isCurrentPage) {
+                    Loading()
+                } else if (state.chapter == null && isCurrentPage) {
+                    ErrorScreen {
+                        viewModel.sendIntent(BibleIntent.LoadChapter(bookName, bookAbbrev, state.currentChapter))
+                    }
+                } else if (isCurrentPage) {
+                    val configuration = LocalConfiguration.current
+                    val isWideScreen = configuration.screenWidthDp > 600
+                    val verses = state.chapter?.verses ?: emptyList()
+
+                    if (isWideScreen) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(24.dp),
+                        ) {
+                            items(verses) { verse ->
+                                VerseItem(
+                                    verse,
+                                    state.fontSize,
+                                    { toggleNavigationMenusVisibility(showBottomBar) },
+                                ) {
+                                    viewModel.sendIntent(BibleIntent.SetSelectedVerse(verse))
+                                }
+                            }
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                if (showBottomBar.value) {
+                                    Spacer(modifier = Modifier.height(64.dp))
+                                } else {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+                            }
+                        }
+                    } else {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(verses) { verse ->
+                                VerseItem(
+                                    verse,
+                                    state.fontSize,
+                                    { toggleNavigationMenusVisibility(showBottomBar) },
+                                ) {
+                                    viewModel.sendIntent(BibleIntent.SetSelectedVerse(verse))
+                                }
+                            }
+                            if (showBottomBar.value) {
+                                item { Spacer(modifier = Modifier.height(64.dp)) }
+                            } else {
+                                item { Spacer(modifier = Modifier.height(8.dp)) }
+                            }
+                        }
+                    }
+                } else {
+                    Loading()
+                }
+            }
+
             DropdownMenu(
                 expanded = state.showTutorial,
                 onDismissRequest = { viewModel.sendIntent(BibleIntent.DisableTutorial) },
@@ -120,60 +204,6 @@ fun BibleReading(
                         Text(
                             text = stringResource(id = R.string.verse_long_press_tutorial),
                         )
-                    }
-                }
-            }
-            if (state.isLoading) Loading()
-            if (state.chapter == null && !state.isLoading) {
-                ErrorScreen {
-                    viewModel.sendIntent(BibleIntent.LoadChapter(bookName, bookAbbrev, state.currentChapter))
-                }
-            }
-            val configuration = LocalConfiguration.current
-            val isWideScreen = configuration.screenWidthDp > 600
-            val verses = state.chapter?.verses ?: emptyList()
-
-            if (isWideScreen) {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                ) {
-                    items(verses) { verse ->
-                        VerseItem(
-                            verse,
-                            state.fontSize,
-                            { toggleNavigationMenusVisibility(showBottomBar) },
-                        ) {
-                            viewModel.sendIntent(BibleIntent.SetSelectedVerse(verse))
-                        }
-                    }
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        if (showBottomBar.value) {
-                            Spacer(modifier = Modifier.height(64.dp))
-                        } else {
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-                    }
-                }
-            } else {
-                LazyColumn {
-                    items(verses) { verse ->
-                        VerseItem(
-                            verse,
-                            state.fontSize,
-                            { toggleNavigationMenusVisibility(showBottomBar) },
-                        ) {
-                            viewModel.sendIntent(BibleIntent.SetSelectedVerse(verse))
-                        }
-                    }
-                    if (showBottomBar.value) {
-                        item { Spacer(modifier = Modifier.height(64.dp)) }
-                    } else {
-                        item { Spacer(modifier = Modifier.height(8.dp)) }
                     }
                 }
             }
@@ -187,6 +217,8 @@ fun BibleReading(
                 chapterQuantity,
                 state.currentChapter,
                 showBottomBar,
+                state.selectedVersion,
+                state.versions,
             )
         }
     }
@@ -204,13 +236,16 @@ fun BottomMenu(
     chapterQuantity: Int,
     currentChapter: Int,
     showBottomBar: MutableState<Boolean>,
+    selectedVersion: String,
+    versions: List<digital.tonima.bibliadigital.domain.model.Version>,
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expandedFontSize by remember { mutableStateOf(false) }
+    var expandedVersions by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = { expanded = false },
+        expanded = expandedFontSize,
+        onDismissRequest = { expandedFontSize = false },
     ) {
         DropdownMenuItem(onClick = { /* Handle refresh! */ }) {
             Row(
@@ -248,6 +283,29 @@ fun BottomMenu(
             }
         }
     }
+
+    DropdownMenu(
+        expanded = expandedVersions,
+        onDismissRequest = { expandedVersions = false },
+    ) {
+        versions.forEach { version ->
+            DropdownMenuItem(onClick = {
+                viewModel.sendIntent(BibleIntent.ChangeVersion(version.code.lowercase()))
+                expandedVersions = false
+            }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = version.code,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (version.code.lowercase() == selectedVersion) {
+                        Icon(Icons.Default.Add, contentDescription = null) // Replace with Check icon if available
+                    }
+                }
+            }
+        }
+    }
+
     AnimatedVisibility(
         visible = showBottomBar.value,
         enter = slideInVertically(initialOffsetY = { 40 }),
@@ -258,7 +316,8 @@ fun BottomMenu(
             modifier =
                 Modifier
                     .wrapContentSize(align = Alignment.BottomCenter)
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .navigationBarsPadding(),
         ) {
             Row(
                 verticalAlignment = Alignment.Bottom,
@@ -266,7 +325,7 @@ fun BottomMenu(
                 modifier = Modifier.padding(16.dp),
             ) {
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = null,
                     modifier =
                         Modifier.clickable {
@@ -304,7 +363,22 @@ fun BottomMenu(
                 Row(
                     modifier =
                         Modifier.clickable {
-                            expanded = !expanded
+                            expandedVersions = !expandedVersions
+                        },
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.MenuBook, // Replace with more suitable icon
+                        contentDescription = null,
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text(
+                        text = selectedVersion.uppercase(),
+                    )
+                }
+                Row(
+                    modifier =
+                        Modifier.clickable {
+                            expandedFontSize = !expandedFontSize
                         },
                 ) {
                     Icon(
@@ -317,7 +391,7 @@ fun BottomMenu(
                     )
                 }
                 Icon(
-                    imageVector = Icons.Default.ArrowForward,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = null,
                     modifier =
                         Modifier.clickable {
@@ -382,7 +456,7 @@ fun ShareVerseMenu(
                 )
                 Spacer(modifier = Modifier.width(2.dp))
                 Icon(
-                    imageVector = Icons.Filled.Send,
+                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
                     contentDescription = null,
                 )
             }

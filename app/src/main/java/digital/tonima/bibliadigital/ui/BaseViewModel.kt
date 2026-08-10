@@ -62,7 +62,7 @@ abstract class BaseViewModel<S : UiState, I : UiIntent, E : UiEvent> : ViewModel
         }
     }
 
-    protected fun handleFailure(failure: Failure) {
-        // This could be handled via UiEvent or a field in UiState
+    protected open fun handleFailure(failure: Failure) {
+        // This could be handled via UiEvent or a field in UiState in subclasses
     }
 }

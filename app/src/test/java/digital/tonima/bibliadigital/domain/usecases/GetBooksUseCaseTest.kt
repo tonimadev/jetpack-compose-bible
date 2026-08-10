@@ -2,7 +2,6 @@ package digital.tonima.bibliadigital.domain.usecases
 
 import digital.tonima.bibliadigital.domain.core.exception.Failure
 import digital.tonima.bibliadigital.domain.core.function.Either
-import digital.tonima.bibliadigital.domain.model.Abbrev
 import digital.tonima.bibliadigital.domain.model.BookResponse
 import digital.tonima.bibliadigital.domain.repository.BibleRepository
 import io.mockk.coEvery
@@ -22,8 +21,8 @@ class GetBooksUseCaseTest {
         runBlocking {
             val mockBookList =
                 listOf(
-                    BookResponse(1, Abbrev(pt = "gn"), name = "Genesis"),
-                    BookResponse(2, Abbrev(pt = "ex"), name = "Exodus"),
+                    BookResponse(1, "gn", name = "Genesis"),
+                    BookResponse(2, "ex", name = "Exodus"),
                 )
             coEvery { mockRepository.getBooks() } returns Either.Success(mockBookList)
 

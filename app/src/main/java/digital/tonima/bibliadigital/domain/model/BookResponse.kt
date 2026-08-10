@@ -12,7 +12,7 @@ data class BookResponse(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
     @SerializedName("abbrev")
-    val abbrev: Abbrev = Abbrev(),
+    val abbrev: String = "",
     @SerializedName("author")
     val author: String = "",
     @SerializedName("chapters")

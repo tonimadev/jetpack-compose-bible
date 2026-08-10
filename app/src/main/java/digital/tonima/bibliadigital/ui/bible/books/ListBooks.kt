@@ -36,7 +36,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import digital.tonima.bibliadigital.R
 import digital.tonima.bibliadigital.domain.model.BookResponse
-import digital.tonima.bibliadigital.ui.bible.BibleIntent
+import digital.tonima.bibliadigital.ui.bible.BibleIntent.ClearFilteredBooks
+import digital.tonima.bibliadigital.ui.bible.BibleIntent.LoadBooks
+import digital.tonima.bibliadigital.ui.bible.BibleIntent.SearchBook
+import digital.tonima.bibliadigital.ui.bible.BibleIntent.UpdateLastSearch
 import digital.tonima.bibliadigital.ui.bible.BibleViewModel
 import digital.tonima.bibliadigital.ui.components.AppBar
 import digital.tonima.bibliadigital.ui.components.ErrorScreen
@@ -63,26 +66,26 @@ fun ListBooks(
             if (state.isLoading) Loading()
             Column {
                 if (state.books.isEmpty() && !state.isLoading) {
-                    ErrorScreen { viewModel.sendIntent(BibleIntent.LoadBooks) }
+                    ErrorScreen { viewModel.sendIntent(LoadBooks) }
                 }
                 SearchView(
                     state = textState,
                     onSearch = { query ->
-                        viewModel.sendIntent(BibleIntent.UpdateLastSearch(query))
-                        viewModel.sendIntent(BibleIntent.SearchBook(query))
+                        viewModel.sendIntent(UpdateLastSearch(query))
+                        viewModel.sendIntent(SearchBook(query))
                     },
                     onDeleteClick = {
                         textState.value = TextFieldValue("")
-                        viewModel.sendIntent(BibleIntent.UpdateLastSearch(""))
-                        viewModel.sendIntent(BibleIntent.SearchBook(""))
-                        viewModel.sendIntent(BibleIntent.ClearFilteredBooks)
+                        viewModel.sendIntent(UpdateLastSearch(""))
+                        viewModel.sendIntent(SearchBook(""))
+                        viewModel.sendIntent(ClearFilteredBooks)
                     },
                 )
                 LazyColumn {
                     items(state.filteredBooks ?: state.books) { book ->
                         BookItem(book, state.fontSize) {
                             keyboardController?.hide()
-                            navController.navigate("chapters_list/${book.name}/${book.abbrev.pt}/${book.chapters}")
+                            navController.navigate("chapters_list/${book.name}/${book.abbrev}/${book.chapters}")
                         }
                     }
                 }
@@ -147,7 +150,7 @@ fun BookItem(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(text = book.name, fontSize = fontSize)
-            Text(text = book.abbrev.pt, fontSize = fontSize)
+            Text(text = book.abbrev, fontSize = fontSize)
         }
     }
 }

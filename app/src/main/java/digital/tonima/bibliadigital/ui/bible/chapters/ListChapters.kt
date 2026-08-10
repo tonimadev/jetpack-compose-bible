@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
@@ -42,11 +43,18 @@ fun ListChapters(
         Surface(
             modifier = Modifier.fillMaxSize().padding(paddingValues),
         ) {
-            LazyVerticalGrid(columns = GridCells.Adaptive(minSize = 70.dp)) {
-                items(chapterQuantity) { index ->
-                    val currentChapter = index + 1
-                    ChapterItem(currentChapter, state.fontSize) {
-                        navController.navigate("reading/$bookName/$bookAbbrev/$currentChapter/$chapterQuantity")
+            if (chapterQuantity == 0) {
+                Text(
+                    text = "No chapters found for this book",
+                    modifier = Modifier.fillMaxSize().wrapContentSize(Alignment.Center),
+                )
+            } else {
+                LazyVerticalGrid(columns = GridCells.Adaptive(minSize = 70.dp)) {
+                    items(chapterQuantity) { index ->
+                        val currentChapter = index + 1
+                        ChapterItem(currentChapter, state.fontSize) {
+                            navController.navigate("reading/$bookName/$bookAbbrev/$currentChapter/$chapterQuantity")
+                        }
                     }
                 }
             }

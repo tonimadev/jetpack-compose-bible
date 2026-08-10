@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import digital.tonima.bibliadigital.domain.common.constants.MAX_FONT_SIZE
 import digital.tonima.bibliadigital.domain.common.constants.MIN_FONT_SIZE
+import digital.tonima.bibliadigital.domain.core.exception.Failure
 import digital.tonima.bibliadigital.domain.core.extension.removeAccents
 import digital.tonima.bibliadigital.domain.model.BookResponse
 import digital.tonima.bibliadigital.domain.model.ChapterResponse
@@ -15,8 +16,11 @@ import digital.tonima.bibliadigital.domain.usecases.DisableShowPressAndHoldVerse
 import digital.tonima.bibliadigital.domain.usecases.GetBooksUseCase
 import digital.tonima.bibliadigital.domain.usecases.GetChapterUseCase
 import digital.tonima.bibliadigital.domain.usecases.GetFontSizeUseCase
+import digital.tonima.bibliadigital.domain.usecases.GetSelectedVersionUseCase
 import digital.tonima.bibliadigital.domain.usecases.GetShowPressAndHoldVerseTutorialUseCase
+import digital.tonima.bibliadigital.domain.usecases.GetVersionsUseCase
 import digital.tonima.bibliadigital.domain.usecases.StoreFontSizeUseCase
+import digital.tonima.bibliadigital.domain.usecases.StoreSelectedVersionUseCase
 import digital.tonima.bibliadigital.domain.usecases.UseCase
 import digital.tonima.bibliadigital.ui.BaseViewModel
 import timber.log.Timber
@@ -33,6 +37,9 @@ class BibleViewModel
         private val storeFontSizeUseCase: StoreFontSizeUseCase,
         private val disableShowPressAndHoldVerseTutorialUseCase: DisableShowPressAndHoldVerseTutorialUseCase,
         private val getStoreShowPressAndHoldVerseTutorial: GetShowPressAndHoldVerseTutorialUseCase,
+        private val getVersionsUseCase: GetVersionsUseCase,
+        private val getSelectedVersionUseCase: GetSelectedVersionUseCase,
+        private val storeSelectedVersionUseCase: StoreSelectedVersionUseCase,
     ) : BaseViewModel<BibleState, BibleIntent, BibleEvent>() {
         private var textToSpeech: TextToSpeech? = null
 
@@ -42,6 +49,8 @@ class BibleViewModel
             sendIntent(BibleIntent.LoadBooks)
             getFontSize()
             getShowTutorialValue()
+            getSelectedVersion()
+            getVersions()
         }
 
         override fun handleIntent(intent: BibleIntent) {
@@ -58,6 +67,8 @@ class BibleViewModel
                 is BibleIntent.SetSelectedVerse -> setSelectedVerse(intent.verse)
                 is BibleIntent.ClearSelectedVerse -> clearSelectedVerse()
                 is BibleIntent.DisableTutorial -> disableTutorials()
+                is BibleIntent.LoadVersions -> getVersions()
+                is BibleIntent.ChangeVersion -> changeVersion(intent.version)
                 is BibleIntent.TextToSpeech -> textToSpeech(intent.context, intent.text)
                 is BibleIntent.StopSpeech -> stopSpeech()
             }
@@ -67,18 +78,24 @@ class BibleViewModel
             getStoreShowPressAndHoldVerseTutorial(
                 UseCase.None(),
                 viewModelScope,
-            ) { it.fold(::handleFailure, { show -> setState { copy(showTutorial = show) } }) }
+            ) { it.fold(::handleBackgroundFailure) { show -> setState { copy(showTutorial = show) } } }
         }
 
         private fun nextChapter() {
             val next = uiState.value.currentChapter + 1
-            setState { copy(currentChapter = next) }
+            val book = uiState.value.chapter?.book
+            if (book != null) {
+                getBookChapter(book.name, book.abbrev, next)
+            }
         }
 
         private fun previousChapter() {
             if (uiState.value.currentChapter > 1) {
                 val prev = uiState.value.currentChapter - 1
-                setState { copy(currentChapter = prev) }
+                val book = uiState.value.chapter?.book
+                if (book != null) {
+                    getBookChapter(book.name, book.abbrev, prev)
+                }
             }
         }
 
@@ -100,9 +117,10 @@ class BibleViewModel
             bookAbbrev: String,
             chapterId: Int,
         ) {
-            setState { copy(isLoading = true, chapter = null) }
+            stopSpeech()
+            setState { copy(isLoading = true, chapter = null, currentChapter = chapterId) }
             getChapterUseCase(
-                GetChapterUseCase.Params(bookName, bookAbbrev, chapterId),
+                GetChapterUseCase.Params(bookName, bookAbbrev, chapterId, uiState.value.selectedVersion),
                 viewModelScope,
             ) {
                 it.fold(
@@ -116,7 +134,7 @@ class BibleViewModel
             val filtered =
                 uiState.value.books.filter {
                     it.name.removeAccents().contains(search, true) ||
-                        it.abbrev.pt.contains(search, true)
+                        it.abbrev.contains(search, true)
                 }
             setState { copy(filteredBooks = filtered) }
         }
@@ -159,7 +177,7 @@ class BibleViewModel
                 viewModelScope,
             ) {
                 it.fold(
-                    ::handleFailure,
+                    ::handleBackgroundFailure,
                     { size -> setState { copy(fontSize = size.sp) } },
                 )
             }
@@ -175,6 +193,14 @@ class BibleViewModel
                     { Timber.i("----- Font size stored") },
                 )
             }
+        }
+
+        override fun handleFailure(failure: Failure) {
+            setState { copy(isLoading = false, failure = failure) }
+        }
+
+        private fun handleBackgroundFailure(failure: Failure) {
+            Timber.e("Background task failed: $failure")
         }
 
         private fun handleFetchBookChapterSuccess(chapterResponse: ChapterResponse) {
@@ -232,7 +258,55 @@ class BibleViewModel
             ) {
                 it.fold(
                     ::handleFailure,
-                    { setState { copy(showTutorial = false) } },
+                ) { setState { copy(showTutorial = false) } }
+            }
+        }
+
+        private fun getVersions() {
+            getVersionsUseCase(
+                UseCase.None(),
+                viewModelScope,
+            ) {
+                it.fold(
+                    ::handleBackgroundFailure,
+                    { versions -> setState { copy(versions = versions) } },
+                )
+            }
+        }
+
+        private fun getSelectedVersion() {
+            getSelectedVersionUseCase(
+                UseCase.None(),
+                viewModelScope,
+            ) {
+                it.fold(
+                    ::handleBackgroundFailure,
+                    { version -> setState { copy(selectedVersion = version) } },
+                )
+            }
+        }
+
+        private fun changeVersion(version: String) {
+            setState { copy(selectedVersion = version) }
+            storeSelectedVersion(version)
+            val currentChapter = uiState.value.chapter
+            if (currentChapter != null) {
+                getBookChapter(
+                    currentChapter.book.name,
+                    currentChapter.book.abbrev,
+                    currentChapter.chapter.number,
+                )
+            }
+        }
+
+        private fun storeSelectedVersion(version: String) {
+            storeSelectedVersionUseCase(
+                StoreSelectedVersionUseCase.Params(version),
+                viewModelScope,
+            ) {
+                it.fold(
+                    ::handleFailure,
+                    { Timber.i("----- Selected version stored") },
                 )
             }
         }

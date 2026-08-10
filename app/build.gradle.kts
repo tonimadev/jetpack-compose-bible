@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
@@ -10,8 +12,18 @@ plugins {
     alias(libs.plugins.spotless)
 }
 
+val properties = Properties()
+val propertiesFile = project.rootProject.file("local.properties")
+if (propertiesFile.exists()) {
+    properties.load(propertiesFile.inputStream())
+}
+
 val bibliaDigitalToken: String =
-    (project.findProperty("BIBLIA_DIGITAL_TOKEN") as? String)?.takeIf {
+    (
+        properties.getProperty(
+            "BIBLIA_DIGITAL_TOKEN",
+        ) ?: project.findProperty("BIBLIA_DIGITAL_TOKEN") as? String
+    )?.takeIf {
         it.isNotBlank()
     } ?: ""
 
