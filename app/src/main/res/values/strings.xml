@@ -16,4 +16,10 @@
     <string name="share_verse">Compartilhar versículo</string>
     <string name="download_now_at_play_store">"Baixe a Bíblia sagrada gratuitamente em: "</string>
     <string name="verse_long_press_tutorial">Pressione e segure em um versículo para ver opções</string>
+    <string name="play">Reproduzir</string>
+    <string name="pause">Pausar</string>
+    <string name="next_chapter">Próximo capítulo</string>
+    <string name="previous_chapter">Capítulo anterior</string>
+    <string name="tts_service_name">Leitura da Bíblia</string>
+    <string name="tts_notification_channel">Controles de Áudio da Bíblia</string>
 </resources>

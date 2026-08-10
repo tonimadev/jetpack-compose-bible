@@ -74,6 +74,8 @@ import digital.tonima.bibliadigital.R
 import digital.tonima.bibliadigital.domain.common.constants.PLAY_STORE_URL
 import digital.tonima.bibliadigital.domain.model.Verse
 import digital.tonima.bibliadigital.ui.bible.BibleIntent
+import digital.tonima.bibliadigital.ui.bible.BibleIntent.ClearSelectedVerse
+import digital.tonima.bibliadigital.ui.bible.BibleIntent.ToggleFavorite
 import digital.tonima.bibliadigital.ui.bible.BibleViewModel
 import digital.tonima.bibliadigital.ui.components.AppBar
 import digital.tonima.bibliadigital.ui.components.ErrorScreen
@@ -96,14 +98,21 @@ fun BibleReading(
     val sheetState = rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden)
     val scope = rememberCoroutineScope()
 
+    val context = LocalContext.current
+
     // Load initial chapter and react to page changes
     LaunchedEffect(pagerState.currentPage) {
         viewModel.sendIntent(BibleIntent.LoadChapter(bookName, bookAbbrev, pagerState.currentPage + 1))
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.sendIntent(BibleIntent.BindTTS(context))
+    }
+
     DisposableEffect(Unit) {
         onDispose {
-            viewModel.sendIntent(BibleIntent.StopSpeech)
+            // Keep speech playing in background
+            viewModel.sendIntent(BibleIntent.UnbindTTS)
         }
     }
 
@@ -230,12 +239,15 @@ fun BibleReading(
                     ShareVerseMenu(verse = it, viewModel, bookName, state.currentChapter)
                 }
                 BottomMenu(
-                    viewModel,
-                    state.isSpeechEnabled,
-                    state.currentText,
-                    chapterQuantity,
-                    showBottomBar,
-                    state.selectedVersion,
+                    viewModel = viewModel,
+                    isSpeechEnable = state.isSpeechEnabled,
+                    isSpeechPaused = state.isSpeechPaused,
+                    currentText = state.currentText,
+                    bookName = bookName,
+                    currentChapter = state.currentChapter,
+                    chapterQuantity = chapterQuantity,
+                    showBottomBar = showBottomBar,
+                    selectedVersion = state.selectedVersion,
                     pagerState = pagerState,
                     scope = scope,
                     onSettingsClick = {
@@ -255,7 +267,10 @@ fun toggleNavigationMenusVisibility(showBottomBar: MutableState<Boolean>) {
 fun BottomMenu(
     viewModel: BibleViewModel,
     isSpeechEnable: Boolean,
+    isSpeechPaused: Boolean,
     currentText: String,
+    bookName: String,
+    currentChapter: Int,
     chapterQuantity: Int,
     showBottomBar: MutableState<Boolean>,
     selectedVersion: String,
@@ -298,30 +313,51 @@ fun BottomMenu(
                     modifier =
                         Modifier
                             .clickable {
-                                if (!isSpeechEnable) {
-                                    viewModel.sendIntent(BibleIntent.TextToSpeech(context, currentText))
-                                } else {
-                                    viewModel.sendIntent(BibleIntent.StopSpeech)
+                                when {
+                                    !isSpeechEnable -> {
+                                        viewModel.sendIntent(
+                                            BibleIntent.TextToSpeech(
+                                                context,
+                                                currentText,
+                                                bookName,
+                                                currentChapter,
+                                            ),
+                                        )
+                                    }
+                                    isSpeechPaused -> viewModel.sendIntent(BibleIntent.ResumeSpeech)
+                                    else -> viewModel.sendIntent(BibleIntent.PauseSpeech)
                                 }
                             }
                             .padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        imageVector = if (isSpeechEnable) Icons.Filled.Clear else Icons.Filled.PlayArrow,
+                        imageVector =
+                            if (isSpeechEnable && !isSpeechPaused) {
+                                Icons.Filled.Clear // Using Clear as Stop icon, maybe change to Pause icon
+                            } else {
+                                Icons.Filled.PlayArrow
+                            },
                         contentDescription = null,
                         tint = MaterialTheme.colors.primary,
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text =
-                            if (isSpeechEnable) {
-                                stringResource(id = R.string.stop_speech)
-                            } else {
-                                stringResource(id = R.string.speech)
+                            when {
+                                !isSpeechEnable -> stringResource(id = R.string.speech)
+                                isSpeechPaused -> stringResource(id = R.string.play)
+                                else -> stringResource(id = R.string.pause)
                             },
                         fontWeight = FontWeight.Medium,
                     )
+                }
+
+                // Stop button only when speech is enabled
+                if (isSpeechEnable) {
+                    IconButton(onClick = { viewModel.sendIntent(BibleIntent.StopSpeech) }) {
+                        Icon(Icons.Filled.Clear, contentDescription = null, tint = MaterialTheme.colors.error)
+                    }
                 }
 
                 Row(
@@ -408,7 +444,7 @@ fun ShareVerseMenu(
         expanded = expandedShareVerseMenu,
         onDismissRequest = {
             expandedShareVerseMenu = false
-            viewModel.sendIntent(BibleIntent.ClearSelectedVerse)
+            viewModel.sendIntent(ClearSelectedVerse)
         },
     ) {
         DropdownMenuItem(onClick = {
@@ -450,8 +486,8 @@ private fun toggleFavorite(
     bookName: String,
     chapter: Int,
 ) {
-    viewModel.sendIntent(BibleIntent.ToggleFavorite(verse, bookName, chapter))
-    viewModel.sendIntent(BibleIntent.ClearSelectedVerse)
+    viewModel.sendIntent(ToggleFavorite(verse, bookName, chapter))
+    viewModel.sendIntent(ClearSelectedVerse)
 }
 
 private fun shareVerseIntent(

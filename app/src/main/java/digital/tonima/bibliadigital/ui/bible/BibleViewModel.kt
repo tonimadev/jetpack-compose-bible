@@ -1,7 +1,6 @@
 package digital.tonima.bibliadigital.ui.bible
 
 import android.content.Context
-import android.speech.tts.TextToSpeech
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,8 +26,10 @@ import digital.tonima.bibliadigital.domain.usecases.StoreSelectedVersionUseCase
 import digital.tonima.bibliadigital.domain.usecases.ToggleFavoriteUseCase
 import digital.tonima.bibliadigital.domain.usecases.UseCase
 import digital.tonima.bibliadigital.ui.BaseViewModel
+import digital.tonima.bibliadigital.ui.bible.tts.TTSEvent
+import digital.tonima.bibliadigital.ui.bible.tts.TTSManager
+import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
@@ -49,9 +50,8 @@ class BibleViewModel
         private val getReadingHistoryUseCase: GetReadingHistoryUseCase,
         private val getFavoritesUseCase: GetFavoritesUseCase,
         private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
+        private val ttsManager: TTSManager,
     ) : BaseViewModel<BibleState, BibleIntent, BibleEvent>() {
-        private var textToSpeech: TextToSpeech? = null
-
         override fun createInitialState() = BibleState()
 
         init {
@@ -62,6 +62,18 @@ class BibleViewModel
             getVersions()
             loadHistory()
             loadFavorites()
+            observeTTSEvents()
+        }
+
+        private fun observeTTSEvents() {
+            viewModelScope.launch {
+                ttsManager.events.collect { event ->
+                    when (event) {
+                        is TTSEvent.NextChapter -> nextChapter()
+                        is TTSEvent.PreviousChapter -> previousChapter()
+                    }
+                }
+            }
         }
 
         override fun handleIntent(intent: BibleIntent) {
@@ -83,8 +95,18 @@ class BibleViewModel
                 is BibleIntent.LoadHistory -> loadHistory()
                 is BibleIntent.LoadFavorites -> loadFavorites()
                 is BibleIntent.ToggleFavorite -> toggleFavorite(intent.verse, intent.bookName, intent.chapter)
-                is BibleIntent.TextToSpeech -> textToSpeech(intent.context, intent.text)
+                is BibleIntent.TextToSpeech ->
+                    textToSpeech(
+                        intent.context,
+                        intent.text,
+                        intent.bookName,
+                        intent.chapter,
+                    )
                 is BibleIntent.StopSpeech -> stopSpeech()
+                is BibleIntent.PauseSpeech -> pauseSpeech()
+                is BibleIntent.ResumeSpeech -> resumeSpeech()
+                is BibleIntent.BindTTS -> bindTTS(intent.context)
+                is BibleIntent.UnbindTTS -> unbindTTS()
             }
         }
 
@@ -156,33 +178,38 @@ class BibleViewModel
         private fun textToSpeech(
             context: Context,
             text: String,
+            bookName: String,
+            chapter: Int,
         ) {
-            textToSpeech =
-                TextToSpeech(
-                    context,
-                ) {
-                    if (it == TextToSpeech.SUCCESS) {
-                        textToSpeech?.let { txtToSpeech ->
-                            txtToSpeech.language = Locale.getDefault()
-                            txtToSpeech.setSpeechRate(1f)
-                            txtToSpeech.speak(
-                                text,
-                                TextToSpeech.QUEUE_FLUSH,
-                                null,
-                                null,
-                            )
-                        }
-                    }
-                }
-            setState { copy(isSpeechEnabled = true) }
+            if (text.isBlank()) {
+                Timber.w("Speech requested but text is empty")
+                return
+            }
+            ttsManager.startSpeaking(context, text, bookName, chapter)
+            setState { copy(isSpeechEnabled = true, isSpeechPaused = false) }
+        }
+
+        private fun pauseSpeech() {
+            ttsManager.pause()
+            setState { copy(isSpeechPaused = true) }
+        }
+
+        private fun resumeSpeech() {
+            ttsManager.resume()
+            setState { copy(isSpeechPaused = false) }
         }
 
         private fun stopSpeech() {
-            if (textToSpeech?.isSpeaking == true) {
-                textToSpeech?.stop()
-                textToSpeech?.shutdown()
-            }
-            setState { copy(isSpeechEnabled = textToSpeech?.isSpeaking ?: false) }
+            ttsManager.stop()
+            setState { copy(isSpeechEnabled = false, isSpeechPaused = false) }
+        }
+
+        private fun bindTTS(context: Context) {
+            ttsManager.bind(context)
+        }
+
+        private fun unbindTTS() {
+            ttsManager.unbind()
         }
 
         private fun getFontSize() {

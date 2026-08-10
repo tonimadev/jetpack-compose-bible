@@ -1,5 +1,6 @@
 package digital.tonima.bibliadigital.ui.bible
 
+import android.content.Context
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
@@ -27,6 +28,7 @@ data class BibleState(
     val lastSearch: String = "",
     val isLoading: Boolean = false,
     val isSpeechEnabled: Boolean = false,
+    val isSpeechPaused: Boolean = false,
     val showTutorial: Boolean = true,
     val selectedVerse: Verse? = null,
     val failure: Failure? = null,
@@ -69,9 +71,22 @@ sealed class BibleIntent : UiIntent {
 
     data class ToggleFavorite(val verse: Verse, val bookName: String, val chapter: Int) : BibleIntent()
 
-    data class TextToSpeech(val context: android.content.Context, val text: String) : BibleIntent()
+    data class TextToSpeech(
+        val context: Context,
+        val text: String,
+        val bookName: String,
+        val chapter: Int,
+    ) : BibleIntent()
 
     object StopSpeech : BibleIntent()
+
+    object PauseSpeech : BibleIntent()
+
+    object ResumeSpeech : BibleIntent()
+
+    data class BindTTS(val context: Context) : BibleIntent()
+
+    object UnbindTTS : BibleIntent()
 }
 
 sealed class BibleEvent : UiEvent {
