@@ -1,18 +1,18 @@
 package digital.tonima.bibliadigital.ui.bible.chapters
 
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material.Card
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -36,7 +36,7 @@ fun ListChapters(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(topBar = {
-        AppBar(title = bookName, icon = Icons.Default.ArrowBack) {
+        AppBar(title = bookName, icon = Icons.AutoMirrored.Filled.ArrowBack) {
             navController.navigateUp()
         }
     }) { paddingValues ->
@@ -62,7 +62,6 @@ fun ListChapters(
     }
 }
 
-@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun ChapterItem(
     chapter: Int,
@@ -70,17 +69,20 @@ fun ChapterItem(
     onBookClick: () -> Unit,
 ) {
     Card(
-        elevation = 5.dp,
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
         modifier =
             Modifier
-                .wrapContentSize()
-                .padding(12.dp),
+                .padding(8.dp)
+                .aspectRatio(1f),
         onClick = onBookClick,
     ) {
         Text(
             text = chapter.toString(),
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(12.dp),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .wrapContentSize(Alignment.Center),
             fontSize = fontSize,
         )
     }

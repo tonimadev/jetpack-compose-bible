@@ -27,19 +27,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Card
-import androidx.compose.material.Divider
-import androidx.compose.material.DropdownMenu
-import androidx.compose.material.DropdownMenuItem
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.ModalBottomSheetLayout
-import androidx.compose.material.ModalBottomSheetValue
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -48,9 +35,21 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.rememberModalBottomSheetState
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -82,7 +81,7 @@ import digital.tonima.bibliadigital.ui.components.ErrorScreen
 import digital.tonima.bibliadigital.ui.components.Loading
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BibleReading(
     bookName: String,
@@ -95,166 +94,157 @@ fun BibleReading(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val showBottomBar = remember { mutableStateOf(true) }
     val pagerState = rememberPagerState(initialPage = chapterId - 1) { chapterQuantity }
-    val sheetState = rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden)
+    val sheetState = rememberModalBottomSheetState()
+    var showSheet by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-
-    val context = LocalContext.current
 
     // Load initial chapter and react to page changes
     LaunchedEffect(pagerState.currentPage) {
         viewModel.sendIntent(BibleIntent.LoadChapter(bookName, bookAbbrev, pagerState.currentPage + 1))
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.sendIntent(BibleIntent.BindTTS(context))
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            // Keep speech playing in background
-            viewModel.sendIntent(BibleIntent.UnbindTTS)
-        }
-    }
-
-    ModalBottomSheetLayout(
-        sheetState = sheetState,
-        sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        sheetContent = {
+    if (showSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showSheet = false },
+            sheetState = sheetState,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        ) {
             ReadingSettingsSheet(
                 viewModel = viewModel,
                 selectedVersion = state.selectedVersion,
                 versions = state.versions,
             )
-        },
-    ) {
-        Scaffold(
-            topBar = {
-                AnimatedVisibility(
-                    visible = showBottomBar.value,
-                    enter = slideInVertically(initialOffsetY = { -40 }),
-                    exit = slideOutVertically(targetOffsetY = { -40 }),
-                ) {
-                    AppBar(
-                        title = "$bookName - ${stringResource(id = R.string.chapter)} ${state.currentChapter}",
-                        icon = Icons.AutoMirrored.Filled.ArrowBack,
-                    ) {
-                        navController.navigateUp()
-                    }
-                }
-            },
-        ) { paddingValues ->
-            Surface(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .pointerInput(Unit) {
-                            detectTapGestures(
-                                onTap = {
-                                    toggleNavigationMenusVisibility(showBottomBar)
-                                },
-                            )
-                        },
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            AnimatedVisibility(
+                visible = showBottomBar.value,
+                enter = slideInVertically(initialOffsetY = { -40 }),
+                exit = slideOutVertically(targetOffsetY = { -40 }),
             ) {
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.fillMaxSize(),
-                    beyondViewportPageCount = 1,
-                ) { page ->
-                    val isCurrentPage = state.currentChapter == page + 1
+                AppBar(
+                    title = "$bookName - ${stringResource(id = R.string.chapter)} ${state.currentChapter}",
+                    icon = Icons.AutoMirrored.Filled.ArrowBack,
+                ) {
+                    navController.navigateUp()
+                }
+            }
+        },
+    ) { paddingValues ->
+        Surface(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = {
+                                toggleNavigationMenusVisibility(showBottomBar)
+                            },
+                        )
+                    },
+        ) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+                beyondViewportPageCount = 1,
+            ) { page ->
+                val isCurrentPage = state.currentChapter == page + 1
 
-                    if (state.isLoading && isCurrentPage) {
-                        Loading()
-                    } else if (state.chapter == null && isCurrentPage) {
-                        ErrorScreen {
-                            viewModel.sendIntent(BibleIntent.LoadChapter(bookName, bookAbbrev, state.currentChapter))
-                        }
-                    } else if (isCurrentPage) {
-                        val configuration = LocalConfiguration.current
-                        val isWideScreen = configuration.screenWidthDp > 600
-                        val verses = state.chapter?.verses ?: emptyList()
+                if (state.isLoading && isCurrentPage) {
+                    Loading()
+                } else if (state.chapter == null && isCurrentPage) {
+                    ErrorScreen {
+                        viewModel.sendIntent(BibleIntent.LoadChapter(bookName, bookAbbrev, state.currentChapter))
+                    }
+                } else if (isCurrentPage) {
+                    val configuration = LocalConfiguration.current
+                    val isWideScreen = configuration.screenWidthDp > 600
+                    val verses = state.chapter?.verses ?: emptyList()
 
-                        if (isWideScreen) {
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(2),
-                                modifier =
-                                    Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(24.dp),
-                            ) {
-                                items(verses) { verse ->
-                                    VerseItem(
-                                        verse,
-                                        state.fontSize,
-                                        { toggleNavigationMenusVisibility(showBottomBar) },
-                                    ) {
-                                        viewModel.sendIntent(BibleIntent.SetSelectedVerse(verse))
-                                    }
-                                }
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    if (showBottomBar.value) {
-                                        Spacer(modifier = Modifier.height(80.dp))
-                                    } else {
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                    }
+                    if (isWideScreen) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(24.dp),
+                        ) {
+                            items(verses) { verse ->
+                                VerseItem(
+                                    verse,
+                                    state.fontSize,
+                                    { toggleNavigationMenusVisibility(showBottomBar) },
+                                ) {
+                                    viewModel.sendIntent(BibleIntent.SetSelectedVerse(verse))
                                 }
                             }
-                        } else {
-                            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                                items(verses) { verse ->
-                                    VerseItem(
-                                        verse,
-                                        state.fontSize,
-                                        { toggleNavigationMenusVisibility(showBottomBar) },
-                                    ) {
-                                        viewModel.sendIntent(BibleIntent.SetSelectedVerse(verse))
-                                    }
-                                }
+                            item(span = { GridItemSpan(maxLineSpan) }) {
                                 if (showBottomBar.value) {
-                                    item { Spacer(modifier = Modifier.height(80.dp)) }
+                                    Spacer(modifier = Modifier.height(80.dp))
                                 } else {
-                                    item { Spacer(modifier = Modifier.height(16.dp)) }
+                                    Spacer(modifier = Modifier.height(16.dp))
                                 }
                             }
                         }
                     } else {
-                        Loading()
-                    }
-                }
-
-                DropdownMenu(
-                    expanded = state.showTutorial,
-                    onDismissRequest = { viewModel.sendIntent(BibleIntent.DisableTutorial) },
-                ) {
-                    DropdownMenuItem(onClick = { }) {
-                        Row {
-                            Text(
-                                text = stringResource(id = R.string.verse_long_press_tutorial),
-                            )
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(verses) { verse ->
+                                VerseItem(
+                                    verse,
+                                    state.fontSize,
+                                    { toggleNavigationMenusVisibility(showBottomBar) },
+                                ) {
+                                    viewModel.sendIntent(BibleIntent.SetSelectedVerse(verse))
+                                }
+                            }
+                            if (showBottomBar.value) {
+                                item { Spacer(modifier = Modifier.height(80.dp)) }
+                            } else {
+                                item { Spacer(modifier = Modifier.height(16.dp)) }
+                            }
                         }
                     }
+                } else {
+                    Loading()
                 }
-                state.selectedVerse?.let {
-                    ShareVerseMenu(verse = it, viewModel, bookName, state.currentChapter)
-                }
-                BottomMenu(
-                    viewModel = viewModel,
-                    isSpeechEnable = state.isSpeechEnabled,
-                    isSpeechPaused = state.isSpeechPaused,
-                    currentText = state.currentText,
-                    bookName = bookName,
-                    currentChapter = state.currentChapter,
-                    chapterQuantity = chapterQuantity,
-                    showBottomBar = showBottomBar,
-                    selectedVersion = state.selectedVersion,
-                    pagerState = pagerState,
-                    scope = scope,
-                    onSettingsClick = {
-                        scope.launch { sheetState.show() }
+            }
+
+            DropdownMenu(
+                expanded = state.showTutorial,
+                onDismissRequest = { viewModel.sendIntent(BibleIntent.DisableTutorial) },
+            ) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(id = R.string.verse_long_press_tutorial),
+                        )
                     },
+                    onClick = { },
                 )
             }
+            state.selectedVerse?.let {
+                ShareVerseMenu(verse = it, viewModel, bookName, state.currentChapter)
+            }
+            BottomMenu(
+                viewModel = viewModel,
+                isSpeechEnable = state.isSpeechEnabled,
+                isSpeechPaused = state.isSpeechPaused,
+                currentText = state.currentText,
+                bookName = bookName,
+                currentChapter = state.currentChapter,
+                chapterQuantity = chapterQuantity,
+                showBottomBar = showBottomBar,
+                selectedVersion = state.selectedVersion,
+                pagerState = pagerState,
+                scope = scope,
+                onSettingsClick = {
+                    showSheet = true
+                },
+            )
         }
     }
 }
@@ -286,7 +276,7 @@ fun BottomMenu(
         exit = slideOutVertically(targetOffsetY = { 40 }),
     ) {
         Card(
-            elevation = 8.dp,
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
             modifier =
                 Modifier
                     .wrapContentSize(align = Alignment.BottomCenter)
@@ -297,7 +287,10 @@ fun BottomMenu(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.padding(16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
             ) {
                 IconButton(onClick = {
                     if (pagerState.currentPage > 0) {
@@ -339,7 +332,7 @@ fun BottomMenu(
                                 Icons.Filled.PlayArrow
                             },
                         contentDescription = null,
-                        tint = MaterialTheme.colors.primary,
+                        tint = MaterialTheme.colorScheme.primary,
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
@@ -356,7 +349,7 @@ fun BottomMenu(
                 // Stop button only when speech is enabled
                 if (isSpeechEnable) {
                     IconButton(onClick = { viewModel.sendIntent(BibleIntent.StopSpeech) }) {
-                        Icon(Icons.Filled.Clear, contentDescription = null, tint = MaterialTheme.colors.error)
+                        Icon(Icons.Filled.Clear, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                     }
                 }
 
@@ -418,7 +411,7 @@ fun VerseItem(
                 text = "${verse.number}",
                 fontSize = (fontSize.value * 0.8f).sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colors.primary.copy(alpha = 0.5f),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
                 modifier = Modifier.width(24.dp),
             )
             Text(
@@ -447,36 +440,36 @@ fun ShareVerseMenu(
             viewModel.sendIntent(ClearSelectedVerse)
         },
     ) {
-        DropdownMenuItem(onClick = {
-            toggleFavorite(verse, viewModel, bookName, chapter)
-            expandedShareVerseMenu = false
-        }) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        DropdownMenuItem(
+            text = { Text("Favoritar") },
+            leadingIcon = {
                 val isFavorite = false // Need to check from state
                 Icon(
                     imageVector = if (isFavorite) Icons.Default.Clear else Icons.Default.Add,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Favoritar")
-            }
-        }
-        Divider()
-        DropdownMenuItem(onClick = {
-            shareVerseIntent(verse, context, bookName = bookName, chapter = chapter)
-            expandedShareVerseMenu = false
-        }) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            },
+            onClick = {
+                toggleFavorite(verse, viewModel, bookName, chapter)
+                expandedShareVerseMenu = false
+            },
+        )
+        HorizontalDivider()
+        DropdownMenuItem(
+            text = { Text(text = stringResource(id = R.string.share)) },
+            leadingIcon = {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = stringResource(id = R.string.share))
-            }
-        }
+            },
+            onClick = {
+                shareVerseIntent(verse, context, bookName = bookName, chapter = chapter)
+                expandedShareVerseMenu = false
+            },
+        )
     }
 }
 

@@ -16,19 +16,20 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.Card
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.Icon
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
-import androidx.compose.material.TextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -76,7 +77,7 @@ fun ListBooks(
     }) { paddingValues ->
         Surface(
             modifier = Modifier.fillMaxSize().padding(paddingValues),
-            color = MaterialTheme.colors.background,
+            color = MaterialTheme.colorScheme.background,
         ) {
             if (state.isLoading) Loading()
 
@@ -144,13 +145,13 @@ fun TestamentHeader(testament: String) {
     val title = if (testament == "VT") "Velho Testamento" else "Novo Testamento"
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colors.surface.copy(alpha = 0.95f),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
     ) {
         Text(
             text = title,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            style = MaterialTheme.typography.subtitle2,
-            color = MaterialTheme.colors.primary,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold,
         )
     }
@@ -167,9 +168,9 @@ fun HistoryCard(
                 .fillMaxWidth()
                 .padding(16.dp)
                 .clickable { onClick() },
-        elevation = 4.dp,
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         shape = RoundedCornerShape(12.dp),
-        backgroundColor = MaterialTheme.colors.surface,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -178,19 +179,19 @@ fun HistoryCard(
             Icon(
                 Icons.Default.History,
                 contentDescription = null,
-                tint = MaterialTheme.colors.primary,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(32.dp),
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text(
                     text = "Continuar lendo",
-                    style = MaterialTheme.typography.caption,
+                    style = MaterialTheme.typography.labelSmall,
                     color = Color.Gray,
                 )
                 Text(
                     text = "${history.bookName}, Capítulo ${history.chapterId}",
-                    style = MaterialTheme.typography.body1,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                 )
             }
@@ -211,9 +212,9 @@ fun SearchView(
             Modifier
                 .fillMaxWidth()
                 .padding(8.dp),
-        color = MaterialTheme.colors.surface,
+        color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(8.dp),
-        elevation = 2.dp,
+        tonalElevation = 2.dp,
     ) {
         TextField(
             value = state.value,
@@ -240,8 +241,9 @@ fun SearchView(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             colors =
-                androidx.compose.material.TextFieldDefaults.textFieldColors(
-                    backgroundColor = Color.Transparent,
+                TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
                 ),
@@ -251,7 +253,6 @@ fun SearchView(
     }
 }
 
-@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun BookItem(
     book: BookResponse,
@@ -275,12 +276,12 @@ fun BookItem(
                 )
                 Text(
                     text = "${book.chapters} capítulos",
-                    style = MaterialTheme.typography.caption,
+                    style = MaterialTheme.typography.labelSmall,
                     color = Color.Gray,
                 )
             }
             Surface(
-                color = MaterialTheme.colors.primary.copy(alpha = 0.1f),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                 shape = RoundedCornerShape(4.dp),
             ) {
                 Text(
@@ -288,7 +289,7 @@ fun BookItem(
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colors.primary,
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
         }

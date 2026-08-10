@@ -87,7 +87,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
         freeCompilerArgs.addAll(
             "-opt-in=kotlin.RequiresOptIn",
-            "-opt-in=androidx.compose.material.ExperimentalMaterialApi",
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
             "-opt-in=com.google.accompanist.navigation.animation.ExperimentalAnimationApi",
         )
     }
@@ -119,8 +119,8 @@ dependencies {
     implementation(libs.accompanist.systemuicontroller)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.foundation)
-    implementation(libs.androidx.compose.material)
     implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.runtime.livedata)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)

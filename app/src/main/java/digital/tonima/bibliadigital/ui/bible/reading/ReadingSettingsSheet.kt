@@ -13,14 +13,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,7 +48,7 @@ fun ReadingSettingsSheet(
     ) {
         Text(
             text = "Configurações de Leitura",
-            style = MaterialTheme.typography.h6,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
         )
 
@@ -56,7 +56,7 @@ fun ReadingSettingsSheet(
 
         Text(
             text = "Tamanho da Fonte",
-            style = MaterialTheme.typography.subtitle2,
+            style = MaterialTheme.typography.bodyMedium,
             color = Color.Gray,
         )
 
@@ -80,7 +80,7 @@ fun ReadingSettingsSheet(
 
         Text(
             text = "Versão da Bíblia",
-            style = MaterialTheme.typography.subtitle2,
+            style = MaterialTheme.typography.bodyMedium,
             color = Color.Gray,
         )
 
@@ -94,8 +94,8 @@ fun ReadingSettingsSheet(
                 val isSelected = version.code.lowercase() == selectedVersion.lowercase()
                 Surface(
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-                    color = if (isSelected) MaterialTheme.colors.primary else MaterialTheme.colors.surface,
-                    elevation = 2.dp,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                    tonalElevation = 2.dp,
                     modifier =
                         Modifier.clickable {
                             viewModel.sendIntent(BibleIntent.ChangeVersion(version.code.lowercase()))
@@ -107,7 +107,12 @@ fun ReadingSettingsSheet(
                     ) {
                         Text(
                             text = version.code,
-                            color = if (isSelected) MaterialTheme.colors.onPrimary else MaterialTheme.colors.onSurface,
+                            color =
+                                if (isSelected) {
+                                    MaterialTheme.colorScheme.onPrimary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         )
                         if (isSelected) {
@@ -115,7 +120,7 @@ fun ReadingSettingsSheet(
                             Icon(
                                 Icons.Default.Check,
                                 contentDescription = null,
-                                tint = MaterialTheme.colors.onPrimary,
+                                tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(16.dp),
                             )
                         }

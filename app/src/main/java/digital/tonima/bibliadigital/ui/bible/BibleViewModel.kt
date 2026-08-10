@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import digital.tonima.bibliadigital.domain.common.constants.MAX_FONT_SIZE
 import digital.tonima.bibliadigital.domain.common.constants.MIN_FONT_SIZE
 import digital.tonima.bibliadigital.domain.core.exception.Failure
@@ -51,6 +52,7 @@ class BibleViewModel
         private val getFavoritesUseCase: GetFavoritesUseCase,
         private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
         private val ttsManager: TTSManager,
+        @ApplicationContext private val context: Context,
     ) : BaseViewModel<BibleState, BibleIntent, BibleEvent>() {
         override fun createInitialState() = BibleState()
 
@@ -62,16 +64,36 @@ class BibleViewModel
             getVersions()
             loadHistory()
             loadFavorites()
-            observeTTSEvents()
+            observeTTS()
         }
 
-        private fun observeTTSEvents() {
+        private fun observeTTS() {
             viewModelScope.launch {
                 ttsManager.events.collect { event ->
                     when (event) {
-                        is TTSEvent.NextChapter -> nextChapter()
-                        is TTSEvent.PreviousChapter -> previousChapter()
+                        is TTSEvent.NextChapter -> nextChapter(isAutoSpeech = true)
+                        is TTSEvent.PreviousChapter -> previousChapter(isAutoSpeech = true)
                     }
+                }
+            }
+
+            viewModelScope.launch {
+                ttsManager.isSessionActive.collect { active ->
+                    setState {
+                        copy(
+                            isSpeechEnabled = active,
+                            playingBookName = if (active) playingBookName else null,
+                            playingBookAbbrev = if (active) playingBookAbbrev else null,
+                            playingChapterId = if (active) playingChapterId else null,
+                            playingChapterQuantity = if (active) playingChapterQuantity else null,
+                        )
+                    }
+                }
+            }
+
+            viewModelScope.launch {
+                ttsManager.isPaused.collect { isPaused ->
+                    setState { copy(isSpeechPaused = isPaused) }
                 }
             }
         }
@@ -117,20 +139,20 @@ class BibleViewModel
             ) { it.fold(::handleBackgroundFailure) { show -> setState { copy(showTutorial = show) } } }
         }
 
-        private fun nextChapter() {
+        private fun nextChapter(isAutoSpeech: Boolean = false) {
             val next = uiState.value.currentChapter + 1
             val book = uiState.value.chapter?.book
             if (book != null) {
-                getBookChapter(book.name, book.abbrev, next)
+                getBookChapter(book.name, book.abbrev, next, isAutoSpeech)
             }
         }
 
-        private fun previousChapter() {
+        private fun previousChapter(isAutoSpeech: Boolean = false) {
             if (uiState.value.currentChapter > 1) {
                 val prev = uiState.value.currentChapter - 1
                 val book = uiState.value.chapter?.book
                 if (book != null) {
-                    getBookChapter(book.name, book.abbrev, prev)
+                    getBookChapter(book.name, book.abbrev, prev, isAutoSpeech)
                 }
             }
         }
@@ -152,8 +174,16 @@ class BibleViewModel
             bookName: String,
             bookAbbrev: String,
             chapterId: Int,
+            isAutoSpeech: Boolean = false,
         ) {
-            stopSpeech()
+            val isAlreadyPlayingThis =
+                uiState.value.isSpeechEnabled &&
+                    uiState.value.playingBookAbbrev == bookAbbrev &&
+                    uiState.value.playingChapterId == chapterId
+
+            if (!isAutoSpeech && !isAlreadyPlayingThis) {
+                stopSpeech()
+            }
             setState { copy(isLoading = true, chapter = null, currentChapter = chapterId) }
             getChapterUseCase(
                 GetChapterUseCase.Params(bookName, bookAbbrev, chapterId, uiState.value.selectedVersion),
@@ -161,7 +191,7 @@ class BibleViewModel
             ) {
                 it.fold(
                     ::handleFailure,
-                    ::handleFetchBookChapterSuccess,
+                    { response -> handleFetchBookChapterSuccess(response, isAutoSpeech) },
                 )
             }
         }
@@ -185,8 +215,23 @@ class BibleViewModel
                 Timber.w("Speech requested but text is empty")
                 return
             }
+
+            // Find current book to get abbrev and total chapters if possible
+            val currentChapter = uiState.value.chapter
+            val bookAbbrev = currentChapter?.book?.abbrev ?: ""
+            val quantity = uiState.value.books.find { it.abbrev == bookAbbrev }?.chapters ?: 50
+
             ttsManager.startSpeaking(context, text, bookName, chapter)
-            setState { copy(isSpeechEnabled = true, isSpeechPaused = false) }
+            setState {
+                copy(
+                    isSpeechEnabled = true,
+                    isSpeechPaused = false,
+                    playingBookName = bookName,
+                    playingBookAbbrev = bookAbbrev,
+                    playingChapterId = chapter,
+                    playingChapterQuantity = quantity,
+                )
+            }
         }
 
         private fun pauseSpeech() {
@@ -201,7 +246,16 @@ class BibleViewModel
 
         private fun stopSpeech() {
             ttsManager.stop()
-            setState { copy(isSpeechEnabled = false, isSpeechPaused = false) }
+            setState {
+                copy(
+                    isSpeechEnabled = false,
+                    isSpeechPaused = false,
+                    playingBookName = null,
+                    playingBookAbbrev = null,
+                    playingChapterId = null,
+                    playingChapterQuantity = null,
+                )
+            }
         }
 
         private fun bindTTS(context: Context) {
@@ -244,15 +298,28 @@ class BibleViewModel
             Timber.e("Background task failed: $failure")
         }
 
-        private fun handleFetchBookChapterSuccess(chapterResponse: ChapterResponse) {
+        private fun handleFetchBookChapterSuccess(
+            chapterResponse: ChapterResponse,
+            isAutoSpeech: Boolean = false,
+        ) {
+            val currentText = chapterResponse.verses.joinToString(" ") { it.text }
             setState {
                 copy(
                     isLoading = false,
                     chapter = chapterResponse,
-                    currentText = chapterResponse.verses.joinToString(" ") { it.text },
+                    currentText = currentText,
                 )
             }
             saveHistory(chapterResponse)
+
+            if (isAutoSpeech) {
+                textToSpeech(
+                    context,
+                    currentText,
+                    chapterResponse.book.name,
+                    chapterResponse.chapter.number,
+                )
+            }
         }
 
         private fun saveHistory(chapterResponse: ChapterResponse) {

@@ -16,7 +16,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
@@ -34,12 +36,26 @@ class TTSManager
         private val _events = MutableSharedFlow<TTSEvent>(extraBufferCapacity = 1)
         val events: SharedFlow<TTSEvent> = _events
 
+        private val _isSessionActive = MutableStateFlow(false)
+        val isSessionActive: StateFlow<Boolean> = _isSessionActive
+
+        private val _isPaused = MutableStateFlow(false)
+        val isPaused: StateFlow<Boolean> = _isPaused
+
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
         private val playerListener =
             object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     Timber.d("Controller state: $playbackState")
+                    _isSessionActive.value = playbackState != Player.STATE_IDLE && playbackState != Player.STATE_ENDED
+                }
+
+                override fun onPlayWhenReadyChanged(
+                    playWhenReady: Boolean,
+                    reason: Int,
+                ) {
+                    _isPaused.value = !playWhenReady
                 }
             }
 
@@ -52,6 +68,8 @@ class TTSManager
                     try {
                         val controller = controllerFuture?.get()
                         controller?.addListener(playerListener)
+                        _isSessionActive.value = (controller?.playbackState ?: Player.STATE_IDLE) != Player.STATE_IDLE
+                        _isPaused.value = !(controller?.playWhenReady ?: true)
                         Timber.d("TTS Controller bound successfully")
                     } catch (e: Exception) {
                         Timber.e(e, "Error binding TTS Controller")

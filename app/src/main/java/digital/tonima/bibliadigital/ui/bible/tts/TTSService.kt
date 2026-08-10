@@ -2,7 +2,6 @@ package digital.tonima.bibliadigital.ui.bible.tts
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.NotificationManager.IMPORTANCE_LOW
 import android.app.PendingIntent
 import android.app.PendingIntent.FLAG_IMMUTABLE
 import android.content.Intent
@@ -16,8 +15,9 @@ import android.speech.tts.TextToSpeech.QUEUE_FLUSH
 import android.speech.tts.UtteranceProgressListener
 import androidx.annotation.OptIn
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationCompat.PRIORITY_LOW
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.common.Player.Command
 import androidx.media3.common.SimpleBasePlayer
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
@@ -34,13 +34,9 @@ import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import dagger.hilt.android.AndroidEntryPoint
-import digital.tonima.bibliadigital.R
-import digital.tonima.bibliadigital.R.drawable.ic_next
-import digital.tonima.bibliadigital.R.drawable.ic_pause
-import digital.tonima.bibliadigital.R.drawable.ic_play
-import digital.tonima.bibliadigital.R.drawable.ic_prev
 import digital.tonima.bibliadigital.ui.MainActivity
-import timber.log.Timber
+import digital.tonima.bibliadigital.ui.bible.tts.TTSEvent.NextChapter
+import digital.tonima.bibliadigital.ui.bible.tts.TTSEvent.PreviousChapter
 import java.util.Locale
 import javax.inject.Inject
 
@@ -66,8 +62,8 @@ class TTSService : MediaSessionService(), TextToSpeech.OnInitListener {
     private val mainHandler = Handler(Looper.getMainLooper())
 
     companion object {
-        const val CHANNEL_ID = "tts_channel_v16"
-        const val NOTIFICATION_ID = 7007
+        const val CHANNEL_ID = "tts_channel_v21"
+        const val NOTIFICATION_ID = 9999
         const val ACTION_PAUSE = "digital.tonima.ACTION_PAUSE"
         const val ACTION_PLAY = "digital.tonima.ACTION_PLAY"
         const val ACTION_NEXT = "digital.tonima.ACTION_NEXT"
@@ -76,12 +72,24 @@ class TTSService : MediaSessionService(), TextToSpeech.OnInitListener {
 
     private inner class TTSPlayer : SimpleBasePlayer(mainLooper) {
         override fun getState(): State {
+            val metadata = MediaMetadata.Builder().setTitle(bookName).setArtist("Capítulo $chapterNumber").build()
+            val itemData = MediaItemData.Builder("tts").setMediaMetadata(metadata).build()
+
             return State.Builder()
-                .setAvailableCommands(Player.Commands.Builder().addAllCommands().build())
-                .setPlayWhenReady(
-                    this@TTSService.playWhenReady,
-                    PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST,
+                .setAvailableCommands(
+                    Player.Commands.Builder()
+                        .add(COMMAND_PLAY_PAUSE)
+                        .add(COMMAND_STOP)
+                        .add(COMMAND_SEEK_TO_NEXT)
+                        .add(COMMAND_SEEK_TO_PREVIOUS)
+                        .add(COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                        .add(COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                        .add(COMMAND_GET_METADATA)
+                        .add(COMMAND_PREPARE)
+                        .build(),
                 )
+                .setPlaylist(listOf(itemData))
+                .setPlayWhenReady(this@TTSService.playWhenReady, PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
                 .setPlaybackState(this@TTSService.playbackState)
                 .build()
         }
@@ -95,29 +103,43 @@ class TTSService : MediaSessionService(), TextToSpeech.OnInitListener {
             stopSpeech()
             return Futures.immediateVoidFuture()
         }
+
+        override fun handleSeek(
+            mediaItemIndex: Int,
+            positionMs: Long,
+            @Command seekCommand: Int,
+        ): ListenableFuture<*> {
+            when (seekCommand) {
+                COMMAND_SEEK_TO_NEXT, COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> ttsManager.emitEvent(NextChapter)
+                COMMAND_SEEK_TO_PREVIOUS, COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> ttsManager.emitEvent(PreviousChapter)
+            }
+            return Futures.immediateVoidFuture()
+        }
+
+        fun requestInvalidate() {
+            invalidateState()
+        }
     }
+
+    private val ttsPlayer: TTSPlayer by lazy { TTSPlayer() }
 
     override fun onCreate() {
         super.onCreate()
-        Timber.d("TTSService onCreate")
         tts = TextToSpeech(this, this)
-
         mediaSession =
-            MediaSession.Builder(this, TTSPlayer())
+            MediaSession.Builder(this, ttsPlayer)
                 .setCallback(
                     object : Callback {
                         override fun onConnect(
                             session: MediaSession,
                             controller: ControllerInfo,
                         ): ConnectionResult {
-                            val sessionCommands =
-                                DEFAULT_SESSION_COMMANDS.buildUpon()
+                            val commands =
+                                DEFAULT_SESSION_COMMANDS
+                                    .buildUpon()
                                     .add(SessionCommand("SPEAK", Bundle.EMPTY))
                                     .build()
-                            return accept(
-                                sessionCommands,
-                                DEFAULT_PLAYER_COMMANDS,
-                            )
+                            return accept(commands, DEFAULT_PLAYER_COMMANDS)
                         }
 
                         override fun onCustomCommand(
@@ -137,20 +159,13 @@ class TTSService : MediaSessionService(), TextToSpeech.OnInitListener {
                             return super.onCustomCommand(session, controller, customCommand, args)
                         }
                     },
-                )
-                .build()
-
+                ).build()
         createNotificationChannel()
     }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel =
-                NotificationChannel(
-                    CHANNEL_ID,
-                    "Leitura Bíblica",
-                    IMPORTANCE_LOW,
-                )
+            val channel = NotificationChannel(CHANNEL_ID, "Áudio Bíblia", NotificationManager.IMPORTANCE_HIGH)
             getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
         }
     }
@@ -160,19 +175,40 @@ class TTSService : MediaSessionService(), TextToSpeech.OnInitListener {
         flags: Int,
         startId: Int,
     ): Int {
-        when (intent?.action) {
-            "SPEAK" ->
-                speak(
-                    intent.getStringExtra("text") ?: "",
-                    intent.getStringExtra("book") ?: "",
-                    intent.getIntExtra("chapter", 0),
-                )
-            ACTION_PAUSE -> pauseSpeech()
-            ACTION_PLAY -> resumeSpeech()
-            ACTION_NEXT -> ttsManager.emitEvent(TTSEvent.NextChapter)
-            ACTION_PREV -> ttsManager.emitEvent(TTSEvent.PreviousChapter)
+        if (intent?.action == "SPEAK") {
+            val text = intent.getStringExtra("text") ?: ""
+            val book = intent.getStringExtra("book") ?: ""
+            val chapter = intent.getIntExtra("chapter", 0)
+            currentText = text
+            bookName = book
+            chapterNumber = chapter
+            showInitialNotification()
+            speak(text, book, chapter)
+        } else {
+            when (intent?.action) {
+                ACTION_PAUSE -> pauseSpeech()
+                ACTION_PLAY -> resumeSpeech()
+                ACTION_NEXT -> ttsManager.emitEvent(NextChapter)
+                ACTION_PREV -> ttsManager.emitEvent(PreviousChapter)
+            }
         }
         return super.onStartCommand(intent, flags, startId)
+    }
+
+    private fun showInitialNotification() {
+        val notification =
+            NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_media_play)
+                .setContentTitle("Bíblia Digital")
+                .setContentText("Iniciando áudio...")
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setOngoing(true)
+                .build()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIFICATION_ID, notification, FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
     }
 
     override fun onInit(status: Int) {
@@ -180,20 +216,25 @@ class TTSService : MediaSessionService(), TextToSpeech.OnInitListener {
             tts?.language = Locale.getDefault()
             tts?.setOnUtteranceProgressListener(
                 object : UtteranceProgressListener() {
-                    override fun onStart(utteranceId: String?) {
-                        Timber.d("TTS Start")
-                    }
+                    override fun onStart(id: String?) = Unit
 
-                    override fun onDone(utteranceId: String?) {
+                    override fun onDone(id: String?) {
                         mainHandler.post {
-                            this@TTSService.playWhenReady = false
+                            playWhenReady = false
+                            playbackState = Player.STATE_IDLE
+                            ttsPlayer.requestInvalidate()
                             updateNotification()
                         }
                     }
 
                     @Deprecated("Deprecated in Java")
-                    override fun onError(utteranceId: String?) {
-                        Timber.e("TTS Error")
+                    override fun onError(id: String?) {
+                        mainHandler.post {
+                            playWhenReady = false
+                            playbackState = Player.STATE_IDLE
+                            ttsPlayer.requestInvalidate()
+                            updateNotification()
+                        }
                     }
                 },
             )
@@ -212,64 +253,48 @@ class TTSService : MediaSessionService(), TextToSpeech.OnInitListener {
         currentText = text
         bookName = book
         chapterNumber = chapter
-
-        this.playWhenReady = true
-        this.playbackState = Player.STATE_READY
-
+        playWhenReady = true
+        playbackState = Player.STATE_READY
+        ttsPlayer.requestInvalidate()
         updateNotification()
-
         if (isTtsReady) {
             tts?.stop()
             tts?.speak(text, QUEUE_FLUSH, null, "bible_tts")
         } else {
-            pendingSpeak = {
-                tts?.speak(
-                    text,
-                    QUEUE_FLUSH,
-                    null,
-                    "bible_tts",
-                )
-            }
+            pendingSpeak = { tts?.speak(text, QUEUE_FLUSH, null, "bible_tts") }
         }
     }
 
     private fun updateNotification() {
         val session = mediaSession ?: return
         val intent = Intent(this, MainActivity::class.java)
-        val pendingIntent =
-            PendingIntent.getActivity(
-                this,
-                0,
-                intent,
-                FLAG_IMMUTABLE,
-            )
+        val pendingIntent = PendingIntent.getActivity(this, 0, intent, FLAG_IMMUTABLE)
 
+        val playPauseIcon = if (playWhenReady) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
         val playPauseAction =
-            if (playWhenReady) {
-                NotificationCompat.Action(ic_pause, "Pausar", getActionPendingIntent(ACTION_PAUSE))
-            } else {
-                NotificationCompat.Action(ic_play, "Ouvir", getActionPendingIntent(ACTION_PLAY))
-            }
+            NotificationCompat.Action(
+                playPauseIcon,
+                if (playWhenReady) "Pausar" else "Ouvir",
+                getActionPendingIntent(if (playWhenReady) ACTION_PAUSE else ACTION_PLAY),
+            )
 
         val notification =
             NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(android.R.drawable.ic_media_play)
                 .setContentTitle(bookName)
                 .setContentText("Capítulo $chapterNumber")
                 .setContentIntent(pendingIntent)
                 .setOngoing(playWhenReady)
-                .addAction(ic_prev, "Anterior", getActionPendingIntent(ACTION_PREV))
+                .addAction(android.R.drawable.ic_media_previous, "Anterior", getActionPendingIntent(ACTION_PREV))
                 .addAction(playPauseAction)
-                .addAction(ic_next, "Próximo", getActionPendingIntent(ACTION_NEXT))
+                .addAction(android.R.drawable.ic_media_next, "Próximo", getActionPendingIntent(ACTION_NEXT))
                 .setStyle(MediaStyleNotificationHelper.MediaStyle(session).setShowActionsInCompactView(1))
-                .setPriority(PRIORITY_LOW)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .build()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager?.notify(NOTIFICATION_ID, notification)
     }
 
     private fun getActionPendingIntent(action: String): PendingIntent {
@@ -279,22 +304,26 @@ class TTSService : MediaSessionService(), TextToSpeech.OnInitListener {
 
     fun pauseSpeech() {
         tts?.stop()
-        this.playWhenReady = false
+        playWhenReady = false
+        ttsPlayer.requestInvalidate()
         updateNotification()
     }
 
     fun resumeSpeech() {
         if (currentText.isNotEmpty()) {
-            this.playWhenReady = true
+            playWhenReady = true
+            playbackState = Player.STATE_READY
             tts?.speak(currentText, QUEUE_FLUSH, null, "bible_tts")
+            ttsPlayer.requestInvalidate()
             updateNotification()
         }
     }
 
     fun stopSpeech() {
         tts?.stop()
-        this.playWhenReady = false
-        this.playbackState = Player.STATE_IDLE
+        playWhenReady = false
+        playbackState = Player.STATE_IDLE
+        ttsPlayer.requestInvalidate()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } else {
@@ -304,7 +333,7 @@ class TTSService : MediaSessionService(), TextToSpeech.OnInitListener {
         stopSelf()
     }
 
-    override fun onGetSession(controllerInfo: ControllerInfo): MediaSession? = mediaSession
+    override fun onGetSession(info: ControllerInfo) = mediaSession
 
     override fun onDestroy() {
         tts?.shutdown()
