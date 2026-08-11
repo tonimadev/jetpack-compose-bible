@@ -87,12 +87,23 @@ interface BibleRepository : Repository {
             }
 
             override suspend fun getVersions(): Either<Failure, List<Version>> {
-                return when (networkHandler.isNetworkAvailable()) {
-                    true ->
-                        request(
-                            service.getVersions(),
-                        ) { it.data }
-                    false -> Either.Fail(Failure.NetworkConnection)
+                val dao = churchDatabase.churchDao()
+                val cachedVersions = dao.getAllVersions()
+
+                return if (cachedVersions.isEmpty()) {
+                    when (networkHandler.isNetworkAvailable()) {
+                        true ->
+                            request(
+                                service.getVersions(),
+                            ) { baseResponse ->
+                                val versions = baseResponse.data
+                                dao.insertAllVersions(versions)
+                                versions
+                            }
+                        false -> Either.Fail(Failure.NetworkConnection)
+                    }
+                } else {
+                    Either.Success(cachedVersions)
                 }
             }
 

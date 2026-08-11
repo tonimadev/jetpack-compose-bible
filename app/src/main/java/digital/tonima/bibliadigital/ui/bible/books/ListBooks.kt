@@ -79,7 +79,7 @@ fun ListBooks(
             modifier = Modifier.fillMaxSize().padding(paddingValues),
             color = MaterialTheme.colorScheme.background,
         ) {
-            if (state.isLoading) Loading()
+            if (state.isLoading && state.books.isEmpty()) Loading()
 
             Column {
                 SearchView(

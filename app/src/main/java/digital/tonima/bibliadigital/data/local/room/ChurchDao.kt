@@ -7,10 +7,12 @@ import androidx.room.Query
 import digital.tonima.bibliadigital.data.local.room.ChurchDatabase.Companion.ABBREVS_TABLE
 import digital.tonima.bibliadigital.data.local.room.ChurchDatabase.Companion.BOOKS_TABLE
 import digital.tonima.bibliadigital.data.local.room.ChurchDatabase.Companion.CHAPTERS_TABLE
+import digital.tonima.bibliadigital.data.local.room.ChurchDatabase.Companion.VERSIONS_TABLE
 import digital.tonima.bibliadigital.domain.model.AbbrevRoomModel
 import digital.tonima.bibliadigital.domain.model.BookResponse
 import digital.tonima.bibliadigital.domain.model.ChapterResponse
 import digital.tonima.bibliadigital.domain.model.FavoriteVerse
+import digital.tonima.bibliadigital.domain.model.Version
 
 @Dao
 interface ChurchDao {
@@ -20,6 +22,9 @@ interface ChurchDao {
     @Query(ALL_BOOKS_QUERY)
     fun getAllBooks(): List<BookResponse>
 
+    @Query(ALL_VERSIONS_QUERY)
+    fun getAllVersions(): List<Version>
+
     @Query(ALL_ABBREVS_QUERY)
     fun getAllAbbrevs(): List<AbbrevRoomModel>
 
@@ -28,6 +33,9 @@ interface ChurchDao {
 
     @Insert(onConflict = REPLACE)
     fun insertAllBooks(books: List<BookResponse>)
+
+    @Insert(onConflict = REPLACE)
+    fun insertAllVersions(versions: List<Version>)
 
     @Insert(onConflict = REPLACE)
     fun insertAllChapters(chapters: List<ChapterResponse>)
@@ -48,6 +56,7 @@ interface ChurchDao {
     companion object {
         const val ALL_CHAPTERS_QUERY = "SELECT * FROM $CHAPTERS_TABLE"
         const val ALL_BOOKS_QUERY = "SELECT * FROM $BOOKS_TABLE"
+        const val ALL_VERSIONS_QUERY = "SELECT * FROM $VERSIONS_TABLE"
         const val ALL_ABBREVS_QUERY = "SELECT * FROM $ABBREVS_TABLE"
     }
 }
