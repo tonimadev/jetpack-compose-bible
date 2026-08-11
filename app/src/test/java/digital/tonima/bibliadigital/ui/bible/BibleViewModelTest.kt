@@ -20,11 +20,17 @@ import digital.tonima.bibliadigital.domain.usecases.StoreFontSizeUseCase
 import digital.tonima.bibliadigital.domain.usecases.StoreReadingHistoryUseCase
 import digital.tonima.bibliadigital.domain.usecases.StoreSelectedVersionUseCase
 import digital.tonima.bibliadigital.domain.usecases.ToggleFavoriteUseCase
+import digital.tonima.bibliadigital.ui.bible.tts.TTSEvent
+import digital.tonima.bibliadigital.ui.bible.tts.TTSManager
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -32,6 +38,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -56,12 +64,29 @@ class BibleViewModelTest {
     private val getReadingHistoryUseCase: GetReadingHistoryUseCase = mockk()
     private val getFavoritesUseCase: GetFavoritesUseCase = mockk()
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase = mockk()
+    private val ttsManager: TTSManager = mockk()
+    private val context: android.content.Context = mockk()
+
+    private val ttsEvents = MutableSharedFlow<TTSEvent>()
+    private val isSessionActive = MutableStateFlow(false)
+    private val isPaused = MutableStateFlow(false)
 
     private lateinit var viewModel: BibleViewModel
 
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
+
+        // Mock TTSManager flows and methods
+        every { ttsManager.events } returns ttsEvents
+        every { ttsManager.isSessionActive } returns isSessionActive
+        every { ttsManager.isPaused } returns isPaused
+        every { ttsManager.stop() } returns Unit
+        every { ttsManager.pause() } returns Unit
+        every { ttsManager.resume() } returns Unit
+        every { ttsManager.startSpeaking(any(), any(), any(), any()) } returns Unit
+        every { ttsManager.bind(any()) } returns Unit
+        every { ttsManager.unbind() } returns Unit
 
         // Mock default behavior for init calls
         coEvery { getFontSizeUseCase(any(), any(), any()) } coAnswers {
@@ -101,6 +126,8 @@ class BibleViewModelTest {
                 getReadingHistoryUseCase,
                 getFavoritesUseCase,
                 toggleFavoriteUseCase,
+                ttsManager,
+                context,
             )
     }
 
@@ -194,5 +221,88 @@ class BibleViewModelTest {
 
             coVerify { toggleFavoriteUseCase(any(), any(), any()) }
             coVerify(exactly = 2) { getFavoritesUseCase(any(), any(), any()) } // One on init, one after toggle
+        }
+
+    @Test
+    fun `when TextToSpeech intent is sent should call ttsManager startSpeaking`() =
+        runTest {
+            val text = "Test text"
+            val bookName = "Genesis"
+            val chapter = 1
+            every { ttsManager.startSpeaking(any(), any(), any(), any()) } returns Unit
+
+            viewModel.sendIntent(BibleIntent.TextToSpeech(context, text, bookName, chapter))
+            advanceUntilIdle()
+
+            verify { ttsManager.startSpeaking(context, text, bookName, chapter) }
+            assertTrue(viewModel.uiState.value.isSpeechEnabled)
+            assertFalse(viewModel.uiState.value.isSpeechPaused)
+        }
+
+    @Test
+    fun `when PauseSpeech intent is sent should call ttsManager pause`() =
+        runTest {
+            every { ttsManager.pause() } returns Unit
+
+            viewModel.sendIntent(BibleIntent.PauseSpeech)
+            advanceUntilIdle()
+
+            verify { ttsManager.pause() }
+            assertTrue(viewModel.uiState.value.isSpeechPaused)
+        }
+
+    @Test
+    fun `when ResumeSpeech intent is sent should call ttsManager resume`() =
+        runTest {
+            every { ttsManager.resume() } returns Unit
+
+            viewModel.sendIntent(BibleIntent.ResumeSpeech)
+            advanceUntilIdle()
+
+            verify { ttsManager.resume() }
+            assertFalse(viewModel.uiState.value.isSpeechPaused)
+        }
+
+    @Test
+    fun `when StopSpeech intent is sent should call ttsManager stop`() =
+        runTest {
+            every { ttsManager.stop() } returns Unit
+
+            viewModel.sendIntent(BibleIntent.StopSpeech)
+            advanceUntilIdle()
+
+            verify { ttsManager.stop() }
+            assertFalse(viewModel.uiState.value.isSpeechEnabled)
+        }
+
+    @Test
+    fun `when TTSManager emits NextChapter should load next chapter`() =
+        runTest {
+            val book = digital.tonima.bibliadigital.domain.model.Book(name = "Genesis", abbrev = "gn")
+            val chapter = digital.tonima.bibliadigital.domain.model.Chapter(number = 1)
+            val chapterResponse =
+                digital.tonima.bibliadigital.domain.model.ChapterResponse(
+                    book = book,
+                    chapter = chapter,
+                )
+            // Inject initial chapter state
+            coEvery { getChapterUseCase(any(), any(), any()) } coAnswers {
+                thirdArg<(Either<*, digital.tonima.bibliadigital.domain.model.ChapterResponse>) -> Unit>().invoke(
+                    Either.Success(chapterResponse),
+                )
+            }
+            coEvery { storeReadingHistoryUseCase(any(), any(), any()) } coAnswers {
+                thirdArg<(Either<*, Unit>) -> Unit>().invoke(Either.Success(Unit))
+            }
+
+            viewModel.sendIntent(BibleIntent.LoadChapter("Genesis", "gn", 1))
+            advanceUntilIdle()
+
+            // Emit NextChapter event. ViewModel handles this by calling getBookChapter with isAutoSpeech = true.
+            // isAutoSpeech = true prevents calling stopSpeech(), avoiding "no answer found for TTSManager.stop()"
+            ttsEvents.emit(TTSEvent.NextChapter)
+            advanceUntilIdle()
+
+            coVerify { getChapterUseCase(match { it.chapterId == 2 }, any(), any()) }
         }
 }
