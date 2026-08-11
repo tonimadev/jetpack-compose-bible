@@ -2,6 +2,8 @@ package digital.tonima.bibliadigital.ui.bible.reading
 
 import android.content.Context
 import android.content.Intent
+import android.content.Intent.ACTION_SEND
+import android.content.Intent.EXTRA_TEXT
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -25,6 +27,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -59,9 +62,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
@@ -72,13 +80,20 @@ import androidx.navigation.NavHostController
 import digital.tonima.bibliadigital.R
 import digital.tonima.bibliadigital.domain.common.constants.PLAY_STORE_URL
 import digital.tonima.bibliadigital.domain.model.Verse
-import digital.tonima.bibliadigital.ui.bible.BibleIntent
 import digital.tonima.bibliadigital.ui.bible.BibleIntent.ClearSelectedVerse
+import digital.tonima.bibliadigital.ui.bible.BibleIntent.DisableTutorial
+import digital.tonima.bibliadigital.ui.bible.BibleIntent.LoadChapter
+import digital.tonima.bibliadigital.ui.bible.BibleIntent.PauseSpeech
+import digital.tonima.bibliadigital.ui.bible.BibleIntent.ResumeSpeech
+import digital.tonima.bibliadigital.ui.bible.BibleIntent.SetSelectedVerse
+import digital.tonima.bibliadigital.ui.bible.BibleIntent.StopSpeech
+import digital.tonima.bibliadigital.ui.bible.BibleIntent.TextToSpeech
 import digital.tonima.bibliadigital.ui.bible.BibleIntent.ToggleFavorite
 import digital.tonima.bibliadigital.ui.bible.BibleViewModel
 import digital.tonima.bibliadigital.ui.components.AppBar
 import digital.tonima.bibliadigital.ui.components.ErrorScreen
 import digital.tonima.bibliadigital.ui.components.Loading
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,9 +113,30 @@ fun BibleReading(
     var showSheet by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
+    val windowInfo = LocalWindowInfo.current
+    val density = LocalDensity.current
+    val isWideScreen = with(density) { windowInfo.containerSize.width.toDp() > 600.dp }
+
+    val nestedScrollConnection =
+        remember {
+            object : NestedScrollConnection {
+                override fun onPreScroll(
+                    available: Offset,
+                    source: NestedScrollSource,
+                ): Offset {
+                    if (available.y < -10f) {
+                        showBottomBar.value = false
+                    } else if (available.y > 10f) {
+                        showBottomBar.value = true
+                    }
+                    return Offset.Zero
+                }
+            }
+        }
+
     // Load initial chapter and react to page changes
     LaunchedEffect(pagerState.currentPage) {
-        viewModel.sendIntent(BibleIntent.LoadChapter(bookName, bookAbbrev, pagerState.currentPage + 1))
+        viewModel.sendIntent(LoadChapter(bookName, bookAbbrev, pagerState.currentPage + 1))
     }
 
     if (showSheet) {
@@ -118,6 +154,7 @@ fun BibleReading(
     }
 
     Scaffold(
+        modifier = Modifier.nestedScroll(nestedScrollConnection),
         topBar = {
             AnimatedVisibility(
                 visible = showBottomBar.value,
@@ -157,16 +194,15 @@ fun BibleReading(
                     Loading()
                 } else if (state.chapter == null && isCurrentPage) {
                     ErrorScreen {
-                        viewModel.sendIntent(BibleIntent.LoadChapter(bookName, bookAbbrev, state.currentChapter))
+                        viewModel.sendIntent(LoadChapter(bookName, bookAbbrev, state.currentChapter))
                     }
                 } else if (isCurrentPage) {
-                    val configuration = LocalConfiguration.current
-                    val isWideScreen = configuration.screenWidthDp > 600
                     val verses = state.chapter?.verses ?: emptyList()
 
                     if (isWideScreen) {
                         LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
+                            // Grid Adaptativo para melhor responsividade
+                            columns = GridCells.Adaptive(minSize = 350.dp),
                             modifier =
                                 Modifier
                                     .fillMaxSize()
@@ -179,7 +215,7 @@ fun BibleReading(
                                     state.fontSize,
                                     { toggleNavigationMenusVisibility(showBottomBar) },
                                 ) {
-                                    viewModel.sendIntent(BibleIntent.SetSelectedVerse(verse))
+                                    viewModel.sendIntent(SetSelectedVerse(verse))
                                 }
                             }
                             item(span = { GridItemSpan(maxLineSpan) }) {
@@ -198,7 +234,7 @@ fun BibleReading(
                                     state.fontSize,
                                     { toggleNavigationMenusVisibility(showBottomBar) },
                                 ) {
-                                    viewModel.sendIntent(BibleIntent.SetSelectedVerse(verse))
+                                    viewModel.sendIntent(SetSelectedVerse(verse))
                                 }
                             }
                             if (showBottomBar.value) {
@@ -215,7 +251,7 @@ fun BibleReading(
 
             DropdownMenu(
                 expanded = state.showTutorial,
-                onDismissRequest = { viewModel.sendIntent(BibleIntent.DisableTutorial) },
+                onDismissRequest = { viewModel.sendIntent(DisableTutorial) },
             ) {
                 DropdownMenuItem(
                     text = {
@@ -264,8 +300,8 @@ fun BottomMenu(
     chapterQuantity: Int,
     showBottomBar: MutableState<Boolean>,
     selectedVersion: String,
-    pagerState: androidx.compose.foundation.pager.PagerState,
-    scope: kotlinx.coroutines.CoroutineScope,
+    pagerState: PagerState,
+    scope: CoroutineScope,
     onSettingsClick: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -309,7 +345,7 @@ fun BottomMenu(
                                 when {
                                     !isSpeechEnable -> {
                                         viewModel.sendIntent(
-                                            BibleIntent.TextToSpeech(
+                                            TextToSpeech(
                                                 context,
                                                 currentText,
                                                 bookName,
@@ -317,8 +353,8 @@ fun BottomMenu(
                                             ),
                                         )
                                     }
-                                    isSpeechPaused -> viewModel.sendIntent(BibleIntent.ResumeSpeech)
-                                    else -> viewModel.sendIntent(BibleIntent.PauseSpeech)
+                                    isSpeechPaused -> viewModel.sendIntent(ResumeSpeech)
+                                    else -> viewModel.sendIntent(PauseSpeech)
                                 }
                             }
                             .padding(8.dp),
@@ -348,7 +384,7 @@ fun BottomMenu(
 
                 // Stop button only when speech is enabled
                 if (isSpeechEnable) {
-                    IconButton(onClick = { viewModel.sendIntent(BibleIntent.StopSpeech) }) {
+                    IconButton(onClick = { viewModel.sendIntent(StopSpeech) }) {
                         Icon(Icons.Filled.Clear, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                     }
                 }
@@ -491,11 +527,11 @@ private fun shareVerseIntent(
 ) {
     val shareIntent =
         Intent().apply {
-            action = Intent.ACTION_SEND
+            action = ACTION_SEND
             val line1 = "${verse.text} - $bookName $chapter:${verse.number}"
             val line2 = "\n\n${context.getString(R.string.download_now_at_play_store)} $PLAY_STORE_URL"
             putExtra(
-                Intent.EXTRA_TEXT,
+                EXTRA_TEXT,
                 line1 + line2,
             )
 
