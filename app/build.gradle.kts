@@ -41,8 +41,8 @@ android {
         applicationId = "digital.tonima.bibliadigital"
         minSdk = 23
         targetSdk = 37
-        versionCode = 15
-        versionName = "1.15"
+        versionCode = 16
+        versionName = "1.16"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

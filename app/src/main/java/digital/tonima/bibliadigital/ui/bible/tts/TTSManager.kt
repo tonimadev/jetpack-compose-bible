@@ -62,8 +62,9 @@ class TTSManager
         fun bind(context: Context) {
             if (controllerFuture == null) {
                 Timber.d("Binding TTS controller")
-                val sessionToken = SessionToken(context, ComponentName(context, TTSService::class.java))
-                controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
+                val appContext = context.applicationContext
+                val sessionToken = SessionToken(appContext, ComponentName(appContext, TTSService::class.java))
+                controllerFuture = MediaController.Builder(appContext, sessionToken).buildAsync()
                 controllerFuture?.addListener({
                     try {
                         val controller = controllerFuture?.get()

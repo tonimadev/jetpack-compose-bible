@@ -37,6 +37,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import digital.tonima.bibliadigital.ui.MainActivity
 import digital.tonima.bibliadigital.ui.bible.tts.TTSEvent.NextChapter
 import digital.tonima.bibliadigital.ui.bible.tts.TTSEvent.PreviousChapter
+import timber.log.Timber
 import java.util.Locale
 import javax.inject.Inject
 
@@ -336,7 +337,11 @@ class TTSService : MediaSessionService(), TextToSpeech.OnInitListener {
     override fun onGetSession(info: ControllerInfo) = mediaSession
 
     override fun onDestroy() {
-        tts?.shutdown()
+        try {
+            tts?.shutdown()
+        } catch (e: Exception) {
+            Timber.e(e, "TTS shutdown failed")
+        }
         mediaSession?.release()
         super.onDestroy()
     }
