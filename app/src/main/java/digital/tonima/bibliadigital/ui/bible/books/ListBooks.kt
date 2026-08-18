@@ -85,14 +85,14 @@ fun ListBooks(
                 SearchView(
                     state = textState,
                     onSearch = { query ->
-                        viewModel.sendIntent(UpdateLastSearch(query))
-                        viewModel.sendIntent(SearchBook(query))
+                        viewModel.onIntent(UpdateLastSearch(query))
+                        viewModel.onIntent(SearchBook(query))
                     },
                     onDeleteClick = {
                         textState.value = TextFieldValue("")
-                        viewModel.sendIntent(UpdateLastSearch(""))
-                        viewModel.sendIntent(SearchBook(""))
-                        viewModel.sendIntent(ClearFilteredBooks)
+                        viewModel.onIntent(UpdateLastSearch(""))
+                        viewModel.onIntent(SearchBook(""))
+                        viewModel.onIntent(ClearFilteredBooks)
                     },
                 )
 
@@ -117,7 +117,7 @@ fun ListBooks(
 
                     if (booksToDisplay.isEmpty() && !state.isLoading) {
                         item {
-                            ErrorScreen { viewModel.sendIntent(LoadBooks) }
+                            ErrorScreen { viewModel.onIntent(LoadBooks) }
                         }
                     }
 

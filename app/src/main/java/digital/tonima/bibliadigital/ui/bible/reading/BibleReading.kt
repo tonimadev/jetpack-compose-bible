@@ -136,7 +136,7 @@ fun BibleReading(
 
     // Load initial chapter and react to page changes
     LaunchedEffect(pagerState.currentPage) {
-        viewModel.sendIntent(LoadChapter(bookName, bookAbbrev, pagerState.currentPage + 1))
+        viewModel.onIntent(LoadChapter(bookName, bookAbbrev, pagerState.currentPage + 1))
     }
 
     if (showSheet) {
@@ -194,7 +194,7 @@ fun BibleReading(
                     Loading()
                 } else if (state.chapter == null && isCurrentPage) {
                     ErrorScreen {
-                        viewModel.sendIntent(LoadChapter(bookName, bookAbbrev, state.currentChapter))
+                        viewModel.onIntent(LoadChapter(bookName, bookAbbrev, state.currentChapter))
                     }
                 } else if (isCurrentPage) {
                     val verses = state.chapter?.verses ?: emptyList()
@@ -215,7 +215,7 @@ fun BibleReading(
                                     state.fontSize,
                                     { toggleNavigationMenusVisibility(showBottomBar) },
                                 ) {
-                                    viewModel.sendIntent(SetSelectedVerse(verse))
+                                    viewModel.onIntent(SetSelectedVerse(verse))
                                 }
                             }
                             item(span = { GridItemSpan(maxLineSpan) }) {
@@ -234,7 +234,7 @@ fun BibleReading(
                                     state.fontSize,
                                     { toggleNavigationMenusVisibility(showBottomBar) },
                                 ) {
-                                    viewModel.sendIntent(SetSelectedVerse(verse))
+                                    viewModel.onIntent(SetSelectedVerse(verse))
                                 }
                             }
                             if (showBottomBar.value) {
@@ -251,7 +251,7 @@ fun BibleReading(
 
             DropdownMenu(
                 expanded = state.showTutorial,
-                onDismissRequest = { viewModel.sendIntent(DisableTutorial) },
+                onDismissRequest = { viewModel.onIntent(DisableTutorial) },
             ) {
                 DropdownMenuItem(
                     text = {
@@ -344,7 +344,7 @@ fun BottomMenu(
                             .clickable {
                                 when {
                                     !isSpeechEnable -> {
-                                        viewModel.sendIntent(
+                                        viewModel.onIntent(
                                             TextToSpeech(
                                                 context,
                                                 currentText,
@@ -353,8 +353,8 @@ fun BottomMenu(
                                             ),
                                         )
                                     }
-                                    isSpeechPaused -> viewModel.sendIntent(ResumeSpeech)
-                                    else -> viewModel.sendIntent(PauseSpeech)
+                                    isSpeechPaused -> viewModel.onIntent(ResumeSpeech)
+                                    else -> viewModel.onIntent(PauseSpeech)
                                 }
                             }
                             .padding(8.dp),
@@ -384,7 +384,7 @@ fun BottomMenu(
 
                 // Stop button only when speech is enabled
                 if (isSpeechEnable) {
-                    IconButton(onClick = { viewModel.sendIntent(StopSpeech) }) {
+                    IconButton(onClick = { viewModel.onIntent(StopSpeech) }) {
                         Icon(Icons.Filled.Clear, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                     }
                 }
@@ -473,7 +473,7 @@ fun ShareVerseMenu(
         expanded = expandedShareVerseMenu,
         onDismissRequest = {
             expandedShareVerseMenu = false
-            viewModel.sendIntent(ClearSelectedVerse)
+            viewModel.onIntent(ClearSelectedVerse)
         },
     ) {
         DropdownMenuItem(
@@ -515,8 +515,8 @@ private fun toggleFavorite(
     bookName: String,
     chapter: Int,
 ) {
-    viewModel.sendIntent(ToggleFavorite(verse, bookName, chapter))
-    viewModel.sendIntent(ClearSelectedVerse)
+    viewModel.onIntent(ToggleFavorite(verse, bookName, chapter))
+    viewModel.onIntent(ClearSelectedVerse)
 }
 
 private fun shareVerseIntent(

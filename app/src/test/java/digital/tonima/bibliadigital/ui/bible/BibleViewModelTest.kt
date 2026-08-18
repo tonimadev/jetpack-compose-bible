@@ -164,7 +164,7 @@ class BibleViewModelTest {
                 lastArg<(Either<*, List<Book>>) -> Unit>().invoke(Either.Success(mockBooks))
             }
 
-            viewModel.sendIntent(BibleIntent.LoadBooks)
+            viewModel.onIntent(BibleIntent.LoadBooks)
             advanceUntilIdle()
 
             assertEquals(mockBooks, viewModel.uiState.value.books)
@@ -178,7 +178,7 @@ class BibleViewModelTest {
                 lastArg<(Either<*, ReadingHistory?>) -> Unit>().invoke(Either.Success(mockHistory))
             }
 
-            viewModel.sendIntent(BibleIntent.LoadHistory)
+            viewModel.onIntent(BibleIntent.LoadHistory)
             advanceUntilIdle()
 
             assertEquals(mockHistory, viewModel.uiState.value.history)
@@ -198,7 +198,7 @@ class BibleViewModelTest {
                 )
             }
 
-            viewModel.sendIntent(BibleIntent.ChangeVersion(newVersion))
+            viewModel.onIntent(BibleIntent.ChangeVersion(newVersion))
             advanceUntilIdle()
 
             assertEquals(newVersion, viewModel.uiState.value.selectedVersion)
@@ -219,7 +219,7 @@ class BibleViewModelTest {
                 lastArg<(Either<*, List<FavoriteVerse>>) -> Unit>().invoke(Either.Success(emptyList()))
             }
 
-            viewModel.sendIntent(BibleIntent.ToggleFavorite(verse, bookName, chapter))
+            viewModel.onIntent(BibleIntent.ToggleFavorite(verse, bookName, chapter))
             advanceUntilIdle()
 
             coVerify { toggleFavoriteUseCase(any(), any(), any(), any()) }
@@ -234,7 +234,7 @@ class BibleViewModelTest {
             val chapter = 1
             every { ttsManager.startSpeaking(any(), any(), any(), any()) } returns Unit
 
-            viewModel.sendIntent(BibleIntent.TextToSpeech(context, text, bookName, chapter))
+            viewModel.onIntent(BibleIntent.TextToSpeech(context, text, bookName, chapter))
             advanceUntilIdle()
 
             verify { ttsManager.startSpeaking(context, text, bookName, chapter) }
@@ -247,7 +247,7 @@ class BibleViewModelTest {
         runTest {
             every { ttsManager.pause() } returns Unit
 
-            viewModel.sendIntent(BibleIntent.PauseSpeech)
+            viewModel.onIntent(BibleIntent.PauseSpeech)
             advanceUntilIdle()
 
             verify { ttsManager.pause() }
@@ -259,7 +259,7 @@ class BibleViewModelTest {
         runTest {
             every { ttsManager.resume() } returns Unit
 
-            viewModel.sendIntent(BibleIntent.ResumeSpeech)
+            viewModel.onIntent(BibleIntent.ResumeSpeech)
             advanceUntilIdle()
 
             verify { ttsManager.resume() }
@@ -271,7 +271,7 @@ class BibleViewModelTest {
         runTest {
             every { ttsManager.stop() } returns Unit
 
-            viewModel.sendIntent(BibleIntent.StopSpeech)
+            viewModel.onIntent(BibleIntent.StopSpeech)
             advanceUntilIdle()
 
             verify { ttsManager.stop() }
@@ -298,7 +298,7 @@ class BibleViewModelTest {
                 lastArg<(Either<*, Unit>) -> Unit>().invoke(Either.Success(Unit))
             }
 
-            viewModel.sendIntent(BibleIntent.LoadChapter("Genesis", "gn", 1))
+            viewModel.onIntent(BibleIntent.LoadChapter("Genesis", "gn", 1))
             advanceUntilIdle()
 
             // Emit NextChapter event. ViewModel handles this by calling getBookChapter with isAutoSpeech = true.

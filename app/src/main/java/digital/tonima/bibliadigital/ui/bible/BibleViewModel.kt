@@ -2,6 +2,7 @@ package digital.tonima.bibliadigital.ui.bible
 
 import android.content.Context
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -26,7 +27,8 @@ import digital.tonima.bibliadigital.domain.usecases.StoreReadingHistoryUseCase
 import digital.tonima.bibliadigital.domain.usecases.StoreSelectedVersionUseCase
 import digital.tonima.bibliadigital.domain.usecases.ToggleFavoriteUseCase
 import digital.tonima.bibliadigital.domain.usecases.UseCase
-import digital.tonima.bibliadigital.ui.BaseViewModel
+import digital.tonima.bibliadigital.ui.StateContainer
+import digital.tonima.bibliadigital.ui.StateContainerImpl
 import digital.tonima.bibliadigital.ui.bible.tts.TTSEvent
 import digital.tonima.bibliadigital.ui.bible.tts.TTSManager
 import kotlinx.coroutines.launch
@@ -54,15 +56,13 @@ class BibleViewModel
         private val ttsManager: TTSManager,
         private val registry: CapabilityRegistry,
         @ApplicationContext private val context: Context,
-    ) : BaseViewModel<BibleState, BibleIntent, BibleEvent>() {
-        override fun createInitialState() = BibleState()
-
+    ) : ViewModel(), StateContainer<BibleState, BibleEvent> by StateContainerImpl(BibleState()) {
         private fun dispatch(mutation: BibleMutation) {
             updateState { BibleReducer.reduce(it, mutation) }
         }
 
         init {
-            sendIntent(BibleIntent.LoadBooks)
+            onIntent(BibleIntent.LoadBooks)
             getFontSize()
             getShowTutorialValue()
             getSelectedVersion()
@@ -95,7 +95,7 @@ class BibleViewModel
             }
         }
 
-        override fun handleIntent(intent: BibleIntent) {
+        fun onIntent(intent: BibleIntent) {
             when (intent) {
                 is BibleIntent.LoadBooks -> getBooks()
                 is BibleIntent.SearchBook -> dispatch(BibleMutation.SearchUpdated(intent.query))
@@ -269,7 +269,7 @@ class BibleViewModel
             }
         }
 
-        override fun handleFailure(failure: Failure) {
+        private fun handleFailure(failure: Failure) {
             dispatch(BibleMutation.FailureOccurred(failure))
         }
 

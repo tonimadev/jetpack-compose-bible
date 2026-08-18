@@ -65,13 +65,13 @@ fun ReadingSettingsSheet(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
-            IconButton(onClick = { viewModel.sendIntent(BibleIntent.DecreaseFontSize) }) {
+            IconButton(onClick = { viewModel.onIntent(BibleIntent.DecreaseFontSize) }) {
                 Icon(ImageVector.vectorResource(id = R.drawable.ic_minus), contentDescription = null)
             }
 
             Text(text = "Aa", fontSize = 20.sp, fontWeight = FontWeight.Medium)
 
-            IconButton(onClick = { viewModel.sendIntent(BibleIntent.IncreaseFontSize) }) {
+            IconButton(onClick = { viewModel.onIntent(BibleIntent.IncreaseFontSize) }) {
                 Icon(Icons.Default.Add, contentDescription = null)
             }
         }
@@ -98,7 +98,7 @@ fun ReadingSettingsSheet(
                     tonalElevation = 2.dp,
                     modifier =
                         Modifier.clickable {
-                            viewModel.sendIntent(BibleIntent.ChangeVersion(version.code.lowercase()))
+                            viewModel.onIntent(BibleIntent.ChangeVersion(version.code.lowercase()))
                         },
                 ) {
                     Row(

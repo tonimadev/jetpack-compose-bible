@@ -41,13 +41,14 @@ The app follows a strict **MVI (Model-View-Intent)** pattern, recently refactore
 - **`BibleIntent`:** Sealed class representing user intentions (e.g., `LoadBooks`, `NextChapter`).
 - **`BibleMutation`:** Internal sealed class that bridges the gap between side-effects and state updates.
 - **`BibleReducer`:** A pure `object` that contains the synchronous logic for updating the state using `.copy()`.
-- **`BaseViewModel`:** Provides a standard `updateState` mechanism to ensure all state changes are processed through the reducer.
+- **`StateContainer`:** A delegate that provides a standard `updateState` mechanism and event handling, ensuring all state changes are processed through the reducer without forcing class inheritance.
 
 ### Benefits of Pure Reducers
 - **Predictability:** Given the same state and mutation, the output state is always identical.
 - **Testability:** The Reducer can be unit-tested without mocks, Coroutines, or Android dependencies.
 - **Separation of Concerns:** The ViewModel handles "the how" (side-effects/coroutines), while the Reducer handles "the what" (state transformation).
 - **Immutability:** Guarantees that the UI only updates when the state actually changes, preventing side-effect bugs.
+- **Composition over Inheritance:** State management is plugged into ViewModels via Kotlin Delegation (`by`), keeping them lean and flexible.
 
 ## Composable Effects & Monadic Computations
 

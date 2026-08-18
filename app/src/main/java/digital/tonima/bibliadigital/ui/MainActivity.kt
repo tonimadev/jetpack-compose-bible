@@ -58,10 +58,10 @@ class MainActivity : ComponentActivity() {
 
         permissionLauncher =
             registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-                viewModel.sendIntent(BibleIntent.LoadBooks)
+                viewModel.onIntent(BibleIntent.LoadBooks)
             }
         callRequestPermissions()
-        viewModel.sendIntent(BibleIntent.BindTTS(this))
+        viewModel.onIntent(BibleIntent.BindTTS(this))
 
         setContent {
             BibliaSagradaTheme {
@@ -187,13 +187,13 @@ fun BibleApplication(viewModel: BibleViewModel) {
                     isPaused = state.isSpeechPaused,
                     onPlayPause = {
                         if (state.isSpeechPaused) {
-                            viewModel.sendIntent(BibleIntent.ResumeSpeech)
+                            viewModel.onIntent(BibleIntent.ResumeSpeech)
                         } else {
-                            viewModel.sendIntent(BibleIntent.PauseSpeech)
+                            viewModel.onIntent(BibleIntent.PauseSpeech)
                         }
                     },
                     onStop = {
-                        viewModel.sendIntent(BibleIntent.StopSpeech)
+                        viewModel.onIntent(BibleIntent.StopSpeech)
                     },
                     onClick = {
                         navController.navigate(
