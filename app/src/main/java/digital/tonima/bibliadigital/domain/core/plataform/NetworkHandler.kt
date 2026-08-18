@@ -6,6 +6,7 @@ import android.net.NetworkCapabilities.TRANSPORT_CELLULAR
 import android.net.NetworkCapabilities.TRANSPORT_ETHERNET
 import android.net.NetworkCapabilities.TRANSPORT_WIFI
 import dagger.hilt.android.qualifiers.ApplicationContext
+import digital.tonima.bibliadigital.domain.core.computation.NetworkConnectivity
 import digital.tonima.bibliadigital.domain.core.extension.connectivityManager
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -15,7 +16,7 @@ class NetworkHandler
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
-    ) {
+    ) : NetworkConnectivity {
         fun isNetworkAvailable(): Boolean {
             val connectivityManager = context.connectivityManager
 

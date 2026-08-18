@@ -8,6 +8,7 @@ import digital.tonima.bibliadigital.data.local.room.ChurchDatabase.Companion.ABB
 import digital.tonima.bibliadigital.data.local.room.ChurchDatabase.Companion.BOOKS_TABLE
 import digital.tonima.bibliadigital.data.local.room.ChurchDatabase.Companion.CHAPTERS_TABLE
 import digital.tonima.bibliadigital.data.local.room.ChurchDatabase.Companion.VERSIONS_TABLE
+import digital.tonima.bibliadigital.domain.core.computation.Database
 import digital.tonima.bibliadigital.domain.model.AbbrevRoomModel
 import digital.tonima.bibliadigital.domain.model.BookResponse
 import digital.tonima.bibliadigital.domain.model.ChapterResponse
@@ -15,39 +16,39 @@ import digital.tonima.bibliadigital.domain.model.FavoriteVerse
 import digital.tonima.bibliadigital.domain.model.Version
 
 @Dao
-interface ChurchDao {
+interface ChurchDao : Database {
     @Query(ALL_CHAPTERS_QUERY)
-    fun getAllChapters(): List<ChapterResponse>
+    suspend fun getAllChapters(): List<ChapterResponse>
 
     @Query(ALL_BOOKS_QUERY)
-    fun getAllBooks(): List<BookResponse>
+    suspend fun getAllBooks(): List<BookResponse>
 
     @Query(ALL_VERSIONS_QUERY)
-    fun getAllVersions(): List<Version>
+    suspend fun getAllVersions(): List<Version>
 
     @Query(ALL_ABBREVS_QUERY)
-    fun getAllAbbrevs(): List<AbbrevRoomModel>
+    suspend fun getAllAbbrevs(): List<AbbrevRoomModel>
 
     @Query("SELECT * FROM favorites ORDER BY timestamp DESC")
-    fun getAllFavorites(): List<FavoriteVerse>
+    suspend fun getAllFavorites(): List<FavoriteVerse>
 
     @Insert(onConflict = REPLACE)
-    fun insertAllBooks(books: List<BookResponse>)
+    suspend fun insertAllBooks(books: List<BookResponse>)
 
     @Insert(onConflict = REPLACE)
-    fun insertAllVersions(versions: List<Version>)
+    suspend fun insertAllVersions(versions: List<Version>)
 
     @Insert(onConflict = REPLACE)
-    fun insertAllChapters(chapters: List<ChapterResponse>)
+    suspend fun insertAllChapters(chapters: List<ChapterResponse>)
 
     @Insert(onConflict = REPLACE)
-    fun insertAllAbbrevs(abbrevs: List<AbbrevRoomModel>)
+    suspend fun insertAllAbbrevs(abbrevs: List<AbbrevRoomModel>)
 
     @Insert(onConflict = REPLACE)
-    fun insertFavorite(favorite: FavoriteVerse)
+    suspend fun insertFavorite(favorite: FavoriteVerse)
 
     @Query("DELETE FROM favorites WHERE bookName = :bookName AND chapter = :chapter AND verseNumber = :verseNumber")
-    fun deleteFavorite(
+    suspend fun deleteFavorite(
         bookName: String,
         chapter: Int,
         verseNumber: Int,

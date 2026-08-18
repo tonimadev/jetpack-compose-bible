@@ -1,46 +1,44 @@
 package digital.tonima.bibliadigital.domain.usecases
 
-import digital.tonima.bibliadigital.domain.core.exception.Failure
+import digital.tonima.bibliadigital.domain.BibleDomainEffects
+import digital.tonima.bibliadigital.domain.core.computation.CapabilityRegistry
+import digital.tonima.bibliadigital.domain.core.computation.Computation
 import digital.tonima.bibliadigital.domain.core.function.Either
-import digital.tonima.bibliadigital.domain.model.BookResponse
-import digital.tonima.bibliadigital.domain.repository.BibleRepository
-import io.mockk.coEvery
-import io.mockk.coVerify
+import digital.tonima.bibliadigital.domain.core.network.NetworkError
+import digital.tonima.bibliadigital.domain.model.Book
+import io.mockk.every
 import io.mockk.mockk
-import junit.framework.TestCase.assertEquals
-import junit.framework.TestCase.assertTrue
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@ExperimentalCoroutinesApi
 class GetBooksUseCaseTest {
-    private val mockRepository: BibleRepository = mockk()
-    private val useCase = GetBooksUseCase(mockRepository)
+    private val mockDomainEffects: BibleDomainEffects = mockk()
+    private val useCase = GetBooksUseCase(mockDomainEffects)
+    private val mockRegistry: CapabilityRegistry = mockk()
 
     @Test
-    fun `when run with params None should return a list of BookResponse`() =
-        runBlocking {
-            val mockBookList =
-                listOf(
-                    BookResponse(1, "gn", name = "Genesis"),
-                    BookResponse(2, "ex", name = "Exodus"),
-                )
-            coEvery { mockRepository.getBooks() } returns Either.Success(mockBookList)
+    fun `when execute with params None should return a list of Book`() =
+        runTest {
+            val mockBookList = listOf(Book(id = 1, name = "Genesis"), Book(id = 2, name = "Exodus"))
+            every { mockDomainEffects.getBooks() } returns Computation { Either.Success(mockBookList) }
 
-            val result = useCase.run(UseCase.None())
+            val result = useCase.execute(UseCase.None()).runInContext(mockRegistry)
 
-            coVerify { mockRepository.getBooks() }
             assertTrue(result is Either.Success)
             assertEquals(mockBookList, (result as Either.Success).b)
         }
 
     @Test
-    fun `when repository returns failure should return failure`() =
-        runBlocking {
-            coEvery { mockRepository.getBooks() } returns Either.Fail(Failure.Error)
+    fun `when domain effects return failure should return failure`() =
+        runTest {
+            every { mockDomainEffects.getBooks() } returns Computation { Either.Fail(NetworkError.ServerError) }
 
-            val result = useCase.run(UseCase.None())
+            val result = useCase.execute(UseCase.None()).runInContext(mockRegistry)
 
-            coVerify { mockRepository.getBooks() }
             assertTrue(result is Either.Fail)
         }
 }

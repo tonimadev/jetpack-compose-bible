@@ -9,12 +9,13 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import digital.tonima.bibliadigital.domain.common.constants.STD_FONT_SIZE
+import digital.tonima.bibliadigital.domain.core.computation.Persistence
 import digital.tonima.bibliadigital.domain.core.exception.Failure
 import digital.tonima.bibliadigital.domain.core.function.Either
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
-class PreferencesDataStore(private val context: Context) {
+class PreferencesDataStore(private val context: Context) : Persistence {
     private val fontSize = intPreferencesKey("font_size")
     private val showPressAndHoldVerseTutorial =
         booleanPreferencesKey("show_press_and_hold_verse_tutorial")

@@ -1,42 +1,42 @@
 package digital.tonima.bibliadigital.data.remote.bible
 
+import digital.tonima.bibliadigital.domain.core.computation.Get
 import digital.tonima.bibliadigital.domain.model.BaseResponse
 import digital.tonima.bibliadigital.domain.model.BookResponse
 import digital.tonima.bibliadigital.domain.model.ChapterResponse
 import digital.tonima.bibliadigital.domain.model.Version
-import retrofit2.Call
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
 import retrofit2.http.Url
 
-interface ChurchRoomApi {
+interface ChurchRoomApi : Get {
     @GET("versions")
-    fun getVersions(): Call<BaseResponse<List<Version>>>
+    suspend fun getVersions(): BaseResponse<List<Version>>
 
     @GET("books")
-    fun getBooks(): Call<BaseResponse<List<BookResponse>>>
+    suspend fun getBooks(): BaseResponse<List<BookResponse>>
 
     @GET("versions/{version}/books/{book}/chapters/{chapter}")
-    fun getChapter(
+    suspend fun getChapter(
         @Path("version") version: String,
         @Path("book") book: String,
         @Path("chapter") chapter: Int,
-    ): Call<BaseResponse<ChapterResponse>>
+    ): BaseResponse<ChapterResponse>
 
     @GET
-    fun getChapterByUrl(
+    suspend fun getChapterByUrl(
         @Url url: String,
-    ): Call<BaseResponse<ChapterResponse>>
+    ): BaseResponse<ChapterResponse>
 
     @GET("versions/{version}/random")
-    fun getRandomVerse(
+    suspend fun getRandomVerse(
         @Path("version") version: String,
-    ): Call<BaseResponse<Any>> // Using Any for now as we don't have a model yet
+    ): BaseResponse<Any>
 
     @GET("versions/{version}/search")
-    fun search(
+    suspend fun search(
         @Path("version") version: String,
         @Query("q") query: String,
-    ): Call<BaseResponse<Any>>
+    ): BaseResponse<Any>
 }

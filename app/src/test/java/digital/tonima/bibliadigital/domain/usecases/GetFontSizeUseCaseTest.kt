@@ -1,41 +1,42 @@
 package digital.tonima.bibliadigital.domain.usecases
 
-import digital.tonima.bibliadigital.data.datastore.PreferencesDataStore
+import digital.tonima.bibliadigital.domain.BibleDomainEffects
+import digital.tonima.bibliadigital.domain.core.computation.CapabilityRegistry
+import digital.tonima.bibliadigital.domain.core.computation.Computation
 import digital.tonima.bibliadigital.domain.core.exception.Failure
 import digital.tonima.bibliadigital.domain.core.function.Either
-import io.mockk.coEvery
-import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@ExperimentalCoroutinesApi
 class GetFontSizeUseCaseTest {
-    private val mockDataStore: PreferencesDataStore = mockk()
-    private val useCase = GetFontSizeUseCase(mockDataStore)
+    private val mockDomainEffects: BibleDomainEffects = mockk()
+    private val useCase = GetFontSizeUseCase(mockDomainEffects)
+    private val mockRegistry: CapabilityRegistry = mockk()
 
     @Test
-    fun `when run should return font size`() =
-        runBlocking {
-            val fontSize = 16
-            coEvery { mockDataStore.readFontSize() } returns Either.Success(fontSize)
+    fun `when execute should return font size`() =
+        runTest {
+            every { mockDomainEffects.getFontSize() } returns Computation { Either.Success(16) }
 
-            val result = useCase.run(UseCase.None())
+            val result = useCase.execute(UseCase.None()).runInContext(mockRegistry)
 
-            coVerify { mockDataStore.readFontSize() }
             assertTrue(result is Either.Success)
-            assertEquals(fontSize, (result as Either.Success).b)
+            assertEquals(16, (result as Either.Success).b)
         }
 
     @Test
-    fun `when data store returns failure should return failure`() =
-        runBlocking {
-            coEvery { mockDataStore.readFontSize() } returns Either.Fail(Failure.Error)
+    fun `when domain effects return failure should return failure`() =
+        runTest {
+            every { mockDomainEffects.getFontSize() } returns Computation { Either.Fail(Failure.Error) }
 
-            val result = useCase.run(UseCase.None())
+            val result = useCase.execute(UseCase.None()).runInContext(mockRegistry)
 
-            coVerify { mockDataStore.readFontSize() }
             assertTrue(result is Either.Fail)
         }
 }

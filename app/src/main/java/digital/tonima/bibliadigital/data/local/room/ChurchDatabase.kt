@@ -35,7 +35,7 @@ abstract class ChurchDatabase : RoomDatabase() {
     abstract fun churchDao(): ChurchDao
 
     companion object {
-        const val BIBLE_DB_VERSION = 21
+        const val BIBLE_DB_VERSION = 22
         const val BIBLE_DB_NAME = "bible"
         const val BOOKS_TABLE = "books"
         const val VERSIONS_TABLE = "versions"

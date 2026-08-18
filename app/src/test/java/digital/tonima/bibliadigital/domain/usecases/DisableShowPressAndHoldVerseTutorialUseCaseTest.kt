@@ -1,38 +1,40 @@
 package digital.tonima.bibliadigital.domain.usecases
 
-import digital.tonima.bibliadigital.data.datastore.PreferencesDataStore
+import digital.tonima.bibliadigital.domain.BibleDomainEffects
+import digital.tonima.bibliadigital.domain.core.computation.CapabilityRegistry
+import digital.tonima.bibliadigital.domain.core.computation.Computation
 import digital.tonima.bibliadigital.domain.core.exception.Failure
 import digital.tonima.bibliadigital.domain.core.function.Either
-import io.mockk.coEvery
-import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@ExperimentalCoroutinesApi
 class DisableShowPressAndHoldVerseTutorialUseCaseTest {
-    private val mockDataStore: PreferencesDataStore = mockk()
-    private val useCase = DisableShowPressAndHoldVerseTutorialUseCase(mockDataStore)
+    private val mockDomainEffects: BibleDomainEffects = mockk()
+    private val useCase = DisableShowPressAndHoldVerseTutorialUseCase(mockDomainEffects)
+    private val mockRegistry: CapabilityRegistry = mockk()
 
     @Test
-    fun `when run with params None should return success`() =
-        runBlocking {
-            coEvery { mockDataStore.disableShowPressAndHoldVerseTutorial() } returns Either.Success(Unit)
+    fun `when execute with params None should return success`() =
+        runTest {
+            every { mockDomainEffects.disableTutorial() } returns Computation { Either.Success(Unit) }
 
-            val result = useCase.run(UseCase.None())
+            val result = useCase.execute(UseCase.None()).runInContext(mockRegistry)
 
-            coVerify { mockDataStore.disableShowPressAndHoldVerseTutorial() }
             assertTrue(result is Either.Success)
         }
 
     @Test
-    fun `when data store returns failure should return failure`() =
-        runBlocking {
-            coEvery { mockDataStore.disableShowPressAndHoldVerseTutorial() } returns Either.Fail(Failure.Error)
+    fun `when domain effects return failure should return failure`() =
+        runTest {
+            every { mockDomainEffects.disableTutorial() } returns Computation { Either.Fail(Failure.Error) }
 
-            val result = useCase.run(UseCase.None())
+            val result = useCase.execute(UseCase.None()).runInContext(mockRegistry)
 
-            coVerify { mockDataStore.disableShowPressAndHoldVerseTutorial() }
             assertTrue(result is Either.Fail)
         }
 }

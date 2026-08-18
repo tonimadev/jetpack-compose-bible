@@ -5,6 +5,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.google.gson.annotations.SerializedName
 import digital.tonima.bibliadigital.data.local.room.ChurchDatabase.Companion.CHAPTERS_TABLE
+import digital.tonima.bibliadigital.domain.core.network.DomainModel
 import javax.inject.Singleton
 
 @Immutable
@@ -21,4 +22,12 @@ data class ChapterResponse(
     val chapter: Chapter = Chapter(),
     @SerializedName("verses")
     val verses: List<Verse> = emptyList(),
-)
+) : DomainModel<BibleChapter> {
+    override fun toDomain() =
+        BibleChapter(
+            version = version,
+            book = book,
+            chapter = chapter,
+            verses = verses,
+        )
+}

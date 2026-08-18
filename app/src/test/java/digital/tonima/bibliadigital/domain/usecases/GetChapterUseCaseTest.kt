@@ -1,26 +1,30 @@
 package digital.tonima.bibliadigital.domain.usecases
 
+import digital.tonima.bibliadigital.domain.BibleDomainEffects
+import digital.tonima.bibliadigital.domain.core.computation.CapabilityRegistry
+import digital.tonima.bibliadigital.domain.core.computation.Computation
 import digital.tonima.bibliadigital.domain.core.exception.Failure
 import digital.tonima.bibliadigital.domain.core.function.Either
 import digital.tonima.bibliadigital.domain.model.Book
 import digital.tonima.bibliadigital.domain.model.Chapter
 import digital.tonima.bibliadigital.domain.model.ChapterResponse
-import digital.tonima.bibliadigital.domain.repository.BibleRepository
-import io.mockk.coEvery
-import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@ExperimentalCoroutinesApi
 class GetChapterUseCaseTest {
-    private val mockRepository: BibleRepository = mockk()
-    private val useCase = GetChapterUseCase(mockRepository)
+    private val mockDomainEffects: BibleDomainEffects = mockk()
+    private val useCase = GetChapterUseCase(mockDomainEffects)
+    private val mockRegistry: CapabilityRegistry = mockk()
 
     @Test
-    fun `when run should return a ChapterResponse`() =
-        runBlocking {
+    fun `when execute should return a ChapterResponse`() =
+        runTest {
             val params = GetChapterUseCase.Params("Genesis", "gn", 1, "nvi")
             val mockChapterResponse =
                 ChapterResponse(
@@ -29,27 +33,29 @@ class GetChapterUseCaseTest {
                     verses = emptyList(),
                 )
 
-            coEvery { mockRepository.getChapter(params.bookName, params.bookAbbrev, params.chapterId, params.version) }
-                .returns(Either.Success(mockChapterResponse))
+            every { mockDomainEffects.getChapter(any(), any(), any(), any()) } returns
+                Computation {
+                    Either.Success(mockChapterResponse)
+                }
 
-            val result = useCase.run(params)
+            val result = useCase.execute(params).runInContext(mockRegistry)
 
-            coVerify { mockRepository.getChapter(params.bookName, params.bookAbbrev, params.chapterId, params.version) }
             assertTrue(result is Either.Success)
             assertEquals(mockChapterResponse, (result as Either.Success).b)
         }
 
     @Test
-    fun `when repository returns failure should return failure`() =
-        runBlocking {
+    fun `when domain effects return failure should return failure`() =
+        runTest {
             val params = GetChapterUseCase.Params("Genesis", "gn", 1, "nvi")
 
-            coEvery { mockRepository.getChapter(params.bookName, params.bookAbbrev, params.chapterId, params.version) }
-                .returns(Either.Fail(Failure.Error))
+            every { mockDomainEffects.getChapter(any(), any(), any(), any()) } returns
+                Computation {
+                    Either.Fail(Failure.Error)
+                }
 
-            val result = useCase.run(params)
+            val result = useCase.execute(params).runInContext(mockRegistry)
 
-            coVerify { mockRepository.getChapter(params.bookName, params.bookAbbrev, params.chapterId, params.version) }
             assertTrue(result is Either.Fail)
         }
 }

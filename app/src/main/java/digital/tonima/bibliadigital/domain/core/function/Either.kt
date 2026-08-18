@@ -48,10 +48,10 @@ sealed class Either<out FAIL, out SUCCESS> {
      * @see Fail
      * @see Success
      */
-    fun fold(
-        fnL: (FAIL) -> Any,
-        fnR: (SUCCESS) -> Any,
-    ): Any =
+    fun <T> fold(
+        fnL: (FAIL) -> T,
+        fnR: (SUCCESS) -> T,
+    ): T =
         when (this) {
             is Fail -> fnL(a)
             is Success -> fnR(b)

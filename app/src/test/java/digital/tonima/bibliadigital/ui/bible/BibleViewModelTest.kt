@@ -2,8 +2,9 @@ package digital.tonima.bibliadigital.ui.bible
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import digital.tonima.bibliadigital.data.datastore.ReadingHistory
+import digital.tonima.bibliadigital.domain.core.computation.CapabilityRegistry
 import digital.tonima.bibliadigital.domain.core.function.Either
-import digital.tonima.bibliadigital.domain.model.BookResponse
+import digital.tonima.bibliadigital.domain.model.Book
 import digital.tonima.bibliadigital.domain.model.FavoriteVerse
 import digital.tonima.bibliadigital.domain.model.Verse
 import digital.tonima.bibliadigital.domain.model.Version
@@ -65,6 +66,7 @@ class BibleViewModelTest {
     private val getFavoritesUseCase: GetFavoritesUseCase = mockk()
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase = mockk()
     private val ttsManager: TTSManager = mockk()
+    private val registry: CapabilityRegistry = mockk()
     private val context: android.content.Context = mockk()
 
     private val ttsEvents = MutableSharedFlow<TTSEvent>()
@@ -89,26 +91,26 @@ class BibleViewModelTest {
         every { ttsManager.unbind() } returns Unit
 
         // Mock default behavior for init calls
-        coEvery { getFontSizeUseCase(any(), any(), any()) } coAnswers {
-            thirdArg<(Either<*, Int>) -> Unit>().invoke(Either.Success(16))
+        coEvery { getFontSizeUseCase(any(), any(), any(), any()) } coAnswers {
+            lastArg<(Either<*, Int>) -> Unit>().invoke(Either.Success(16))
         }
-        coEvery { getStoreShowPressAndHoldVerseTutorial(any(), any(), any()) } coAnswers {
-            thirdArg<(Either<*, Boolean>) -> Unit>().invoke(Either.Success(true))
+        coEvery { getStoreShowPressAndHoldVerseTutorial(any(), any(), any(), any()) } coAnswers {
+            lastArg<(Either<*, Boolean>) -> Unit>().invoke(Either.Success(true))
         }
-        coEvery { getBooksUseCase(any(), any(), any()) } coAnswers {
-            thirdArg<(Either<*, List<BookResponse>>) -> Unit>().invoke(Either.Success(emptyList()))
+        coEvery { getBooksUseCase(any(), any(), any(), any()) } coAnswers {
+            lastArg<(Either<*, List<Book>>) -> Unit>().invoke(Either.Success(emptyList()))
         }
-        coEvery { getSelectedVersionUseCase(any(), any(), any()) } coAnswers {
-            thirdArg<(Either<*, String>) -> Unit>().invoke(Either.Success("nvi"))
+        coEvery { getSelectedVersionUseCase(any(), any(), any(), any()) } coAnswers {
+            lastArg<(Either<*, String>) -> Unit>().invoke(Either.Success("nvi"))
         }
-        coEvery { getVersionsUseCase(any(), any(), any()) } coAnswers {
-            thirdArg<(Either<*, List<Version>>) -> Unit>().invoke(Either.Success(emptyList()))
+        coEvery { getVersionsUseCase(any(), any(), any(), any()) } coAnswers {
+            lastArg<(Either<*, List<Version>>) -> Unit>().invoke(Either.Success(emptyList()))
         }
-        coEvery { getReadingHistoryUseCase(any(), any(), any()) } coAnswers {
-            thirdArg<(Either<*, ReadingHistory?>) -> Unit>().invoke(Either.Success(null))
+        coEvery { getReadingHistoryUseCase(any(), any(), any(), any()) } coAnswers {
+            lastArg<(Either<*, ReadingHistory?>) -> Unit>().invoke(Either.Success(null))
         }
-        coEvery { getFavoritesUseCase(any(), any(), any()) } coAnswers {
-            thirdArg<(Either<*, List<FavoriteVerse>>) -> Unit>().invoke(Either.Success(emptyList()))
+        coEvery { getFavoritesUseCase(any(), any(), any(), any()) } coAnswers {
+            lastArg<(Either<*, List<FavoriteVerse>>) -> Unit>().invoke(Either.Success(emptyList()))
         }
 
         viewModel =
@@ -127,6 +129,7 @@ class BibleViewModelTest {
                 getFavoritesUseCase,
                 toggleFavoriteUseCase,
                 ttsManager,
+                registry,
                 context,
             )
     }
@@ -140,13 +143,13 @@ class BibleViewModelTest {
     fun `when init should fetch initial data`() =
         runTest {
             advanceUntilIdle()
-            coVerify { getFontSizeUseCase(any(), any(), any()) }
-            coVerify { getStoreShowPressAndHoldVerseTutorial(any(), any(), any()) }
-            coVerify { getBooksUseCase(any(), any(), any()) }
-            coVerify { getSelectedVersionUseCase(any(), any(), any()) }
-            coVerify { getVersionsUseCase(any(), any(), any()) }
-            coVerify { getReadingHistoryUseCase(any(), any(), any()) }
-            coVerify { getFavoritesUseCase(any(), any(), any()) }
+            coVerify { getFontSizeUseCase(any(), any(), any(), any()) }
+            coVerify { getStoreShowPressAndHoldVerseTutorial(any(), any(), any(), any()) }
+            coVerify { getBooksUseCase(any(), any(), any(), any()) }
+            coVerify { getSelectedVersionUseCase(any(), any(), any(), any()) }
+            coVerify { getVersionsUseCase(any(), any(), any(), any()) }
+            coVerify { getReadingHistoryUseCase(any(), any(), any(), any()) }
+            coVerify { getFavoritesUseCase(any(), any(), any(), any()) }
 
             assertEquals(16, viewModel.uiState.value.fontSize.value.toInt())
             assertEquals(true, viewModel.uiState.value.showTutorial)
@@ -156,9 +159,9 @@ class BibleViewModelTest {
     @Test
     fun `when LoadBooks intent is sent should update books in state`() =
         runTest {
-            val mockBooks = listOf(BookResponse(1, "gn", name = "Genesis"))
-            coEvery { getBooksUseCase(any(), any(), any()) } coAnswers {
-                thirdArg<(Either<*, List<BookResponse>>) -> Unit>().invoke(Either.Success(mockBooks))
+            val mockBooks = listOf(Book(1, "gn", name = "Genesis"))
+            coEvery { getBooksUseCase(any(), any(), any(), any()) } coAnswers {
+                lastArg<(Either<*, List<Book>>) -> Unit>().invoke(Either.Success(mockBooks))
             }
 
             viewModel.sendIntent(BibleIntent.LoadBooks)
@@ -171,8 +174,8 @@ class BibleViewModelTest {
     fun `when LoadHistory intent is sent should update history in state`() =
         runTest {
             val mockHistory = ReadingHistory("Genesis", "gn", 1, 50)
-            coEvery { getReadingHistoryUseCase(any(), any(), any()) } coAnswers {
-                thirdArg<(Either<*, ReadingHistory?>) -> Unit>().invoke(Either.Success(mockHistory))
+            coEvery { getReadingHistoryUseCase(any(), any(), any(), any()) } coAnswers {
+                lastArg<(Either<*, ReadingHistory?>) -> Unit>().invoke(Either.Success(mockHistory))
             }
 
             viewModel.sendIntent(BibleIntent.LoadHistory)
@@ -185,12 +188,12 @@ class BibleViewModelTest {
     fun `when ChangeVersion intent is sent should update selected version and fetch chapter`() =
         runTest {
             val newVersion = "acf"
-            coEvery { storeSelectedVersionUseCase(any(), any(), any()) } coAnswers {
-                thirdArg<(Either<*, Unit>) -> Unit>().invoke(Either.Success(Unit))
+            coEvery { storeSelectedVersionUseCase(any(), any(), any(), any()) } coAnswers {
+                lastArg<(Either<*, Unit>) -> Unit>().invoke(Either.Success(Unit))
             }
-            coEvery { getChapterUseCase(any(), any(), any()) } coAnswers {
+            coEvery { getChapterUseCase(any(), any(), any(), any()) } coAnswers {
                 // Return dummy failure to simplify test, main point is that it was called
-                thirdArg<(Either<*, digital.tonima.bibliadigital.domain.model.ChapterResponse>) -> Unit>().invoke(
+                lastArg<(Either<*, digital.tonima.bibliadigital.domain.model.ChapterResponse>) -> Unit>().invoke(
                     Either.Fail(digital.tonima.bibliadigital.domain.core.exception.Failure.NetworkConnection),
                 )
             }
@@ -199,7 +202,7 @@ class BibleViewModelTest {
             advanceUntilIdle()
 
             assertEquals(newVersion, viewModel.uiState.value.selectedVersion)
-            coVerify { storeSelectedVersionUseCase(any(), any(), any()) }
+            coVerify { storeSelectedVersionUseCase(any(), any(), any(), any()) }
         }
 
     @Test
@@ -209,18 +212,18 @@ class BibleViewModelTest {
             val bookName = "Genesis"
             val chapter = 1
 
-            coEvery { toggleFavoriteUseCase(any(), any(), any()) } coAnswers {
-                thirdArg<(Either<*, Boolean>) -> Unit>().invoke(Either.Success(true))
+            coEvery { toggleFavoriteUseCase(any(), any(), any(), any()) } coAnswers {
+                lastArg<(Either<*, Boolean>) -> Unit>().invoke(Either.Success(true))
             }
-            coEvery { getFavoritesUseCase(any(), any(), any()) } coAnswers {
-                thirdArg<(Either<*, List<FavoriteVerse>>) -> Unit>().invoke(Either.Success(emptyList()))
+            coEvery { getFavoritesUseCase(any(), any(), any(), any()) } coAnswers {
+                lastArg<(Either<*, List<FavoriteVerse>>) -> Unit>().invoke(Either.Success(emptyList()))
             }
 
             viewModel.sendIntent(BibleIntent.ToggleFavorite(verse, bookName, chapter))
             advanceUntilIdle()
 
-            coVerify { toggleFavoriteUseCase(any(), any(), any()) }
-            coVerify(exactly = 2) { getFavoritesUseCase(any(), any(), any()) } // One on init, one after toggle
+            coVerify { toggleFavoriteUseCase(any(), any(), any(), any()) }
+            coVerify(exactly = 2) { getFavoritesUseCase(any(), any(), any(), any()) } // One on init, one after toggle
         }
 
     @Test
@@ -278,7 +281,7 @@ class BibleViewModelTest {
     @Test
     fun `when TTSManager emits NextChapter should load next chapter`() =
         runTest {
-            val book = digital.tonima.bibliadigital.domain.model.Book(name = "Genesis", abbrev = "gn")
+            val book = Book(name = "Genesis", abbrev = "gn")
             val chapter = digital.tonima.bibliadigital.domain.model.Chapter(number = 1)
             val chapterResponse =
                 digital.tonima.bibliadigital.domain.model.ChapterResponse(
@@ -286,13 +289,13 @@ class BibleViewModelTest {
                     chapter = chapter,
                 )
             // Inject initial chapter state
-            coEvery { getChapterUseCase(any(), any(), any()) } coAnswers {
-                thirdArg<(Either<*, digital.tonima.bibliadigital.domain.model.ChapterResponse>) -> Unit>().invoke(
+            coEvery { getChapterUseCase(any(), any(), any(), any()) } coAnswers {
+                lastArg<(Either<*, digital.tonima.bibliadigital.domain.model.ChapterResponse>) -> Unit>().invoke(
                     Either.Success(chapterResponse),
                 )
             }
-            coEvery { storeReadingHistoryUseCase(any(), any(), any()) } coAnswers {
-                thirdArg<(Either<*, Unit>) -> Unit>().invoke(Either.Success(Unit))
+            coEvery { storeReadingHistoryUseCase(any(), any(), any(), any()) } coAnswers {
+                lastArg<(Either<*, Unit>) -> Unit>().invoke(Either.Success(Unit))
             }
 
             viewModel.sendIntent(BibleIntent.LoadChapter("Genesis", "gn", 1))
@@ -303,6 +306,6 @@ class BibleViewModelTest {
             ttsEvents.emit(TTSEvent.NextChapter)
             advanceUntilIdle()
 
-            coVerify { getChapterUseCase(match { it.chapterId == 2 }, any(), any()) }
+            coVerify { getChapterUseCase(match { it.chapterId == 2 }, any(), any(), any()) }
         }
 }

@@ -11,7 +11,8 @@ This project has been recently modernized to follow the latest Android developme
 
 - **Language & Toolchain:** Kotlin 2.x with Java 21 and Gradle 9.x.
 - **UI Framework:** 100% Jetpack Compose with Material Design.
-- **Architecture:** **MVI (Model-View-Intent)** with Clean Architecture.
+- **Architecture:** **MVI (Model-View-Intent)** with **Composable Effects** (Monadic Computations).
+- **Network Layer:** Declarative pipelines using the `Computation<C, R>` monad, replacing the traditional Repository pattern for cleaner effect management.
 - **Build System:** Gradle Version Catalog (`libs.versions.toml`) for centralized dependency management.
 - **Dependency Injection:** Hilt (Dagger) using **KSP** (Kotlin Symbol Processing).
 - **Data Persistence:** Room Database with KSP.
@@ -22,13 +23,74 @@ This project has been recently modernized to follow the latest Android developme
   - **MockK:** Comprehensive unit testing.
   - **GitHub Actions:** CI/CD pipeline for automated verification.
 
-## Architecture: MVI
+## Architecture: MVI & Pure Reducers
 
-The app follows the MVI pattern to ensure a predictable state and unidirectional data flow:
+The app follows a strict **MVI (Model-View-Intent)** pattern, recently refactored to use **Pure Reducers**. This ensures a predictable UI state, unidirectional data flow, and high testability by separating business logic from UI state management.
 
-- **State:** Centralized immutable UI State (`BibleState`).
-- **Intent:** User actions or system events expressed as sealed classes (`BibleIntent`).
-- **Event:** One-time UI events like showing errors or navigation (`BibleEvent`).
+### The MVI Cycle
+
+1.  **Intent:** User actions or system events (`BibleIntent`).
+2.  **Side-Effects:** Asynchronous operations managed by the ViewModel (UseCases, TTS, IO).
+3.  **Mutation:** Internal signals that describe *how* the state should change (`BibleMutation`).
+4.  **Reducer:** A **pure function** `(State, Mutation) -> State` that produces a new immutable state.
+5.  **State:** The single source of truth for the UI (`BibleState`), consumed via `StateFlow`.
+
+### Core Components
+
+- **`BibleState`:** Centralized immutable data class representing the entire UI state.
+- **`BibleIntent`:** Sealed class representing user intentions (e.g., `LoadBooks`, `NextChapter`).
+- **`BibleMutation`:** Internal sealed class that bridges the gap between side-effects and state updates.
+- **`BibleReducer`:** A pure `object` that contains the synchronous logic for updating the state using `.copy()`.
+- **`BaseViewModel`:** Provides a standard `updateState` mechanism to ensure all state changes are processed through the reducer.
+
+### Benefits of Pure Reducers
+- **Predictability:** Given the same state and mutation, the output state is always identical.
+- **Testability:** The Reducer can be unit-tested without mocks, Coroutines, or Android dependencies.
+- **Separation of Concerns:** The ViewModel handles "the how" (side-effects/coroutines), while the Reducer handles "the what" (state transformation).
+- **Immutability:** Guarantees that the UI only updates when the state actually changes, preventing side-effect bugs.
+
+## Composable Effects & Monadic Computations
+
+The project implements a functional approach to networking and side-effects, moving away from the traditional Repository pattern towards **Monadic Computations**.
+
+### Core Concepts
+
+1.  **`Computation<C, R>` Monad:** Encapsulates a function `suspend (C) -> R`. This separates the **description** of an effect (what to do) from its **execution** (when and how to do it). These effects are organized in **Hilt-managed classes**, combining Dependency Injection with functional purity.
+    *   `C`: The **Context** or **Capability** required (e.g., `ChurchRoomApi`, `PreferencesDataStore`).
+    *   `R`: The **Result** of the computation.
+2.  **Typed Capabilities:** APIs and data sources are modeled as capabilities (`Get`, `Post`, `Persistence`, `Database`). These are registered in a `CapabilityRegistry`, allowing for clean decoupling and easy mocking.
+3.  **Functional Error Handling:** Uses the `Either<Failure, T>` type to manage errors. This ensures:
+    *   **Fail-fast behavior:** Pipelines stop automatically on the first error.
+    *   **Exhaustive checking:** The UI layer is forced to handle both Success and Failure cases.
+4.  **Declarative Pipelines:** Instead of imperative logic, operations are composed using `map`, `flatMap`, and `flatMapResult`.
+
+### Example: Declarative Pipeline
+
+```kotlin
+// Description of the effect (Lazy)
+fun getBooks(): Computation<CapabilityRegistry, Either<Failure, List<Book>>> =
+    Computation { registry ->
+        val dao = registry.get(ChurchDao::class.java)
+        val cached = dao.getAllBooks()
+
+        if (cached.isNotEmpty()) {
+            Either.Success(cached.map { it.toDomain() })
+        } else {
+            // Chain network call and database caching...
+        }
+    }
+
+// Execution in the ViewModel (Runtime)
+val result = getBooks()
+    .switchContext(Dispatchers.IO)
+    .runInContext(registry)
+```
+
+### Benefits
+- **Testability:** Effects are values that can be tested by running them in a controlled context. Classes are Hilt-managed, allowing for easy mocking of entire effect factories.
+- **Immutability:** Effects are immutable descriptions, preventing hidden side-effects.
+- **Composability:** Complex dependencies are easily chained in a single readable pipeline.
+- **DI Integration:** Leverages Hilt for lifecycle and dependency management without compromising functional purity.
 
 ## Features
 

@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import digital.tonima.bibliadigital.R
-import digital.tonima.bibliadigital.domain.model.BookResponse
+import digital.tonima.bibliadigital.domain.model.Book
 import digital.tonima.bibliadigital.ui.bible.BibleIntent.ClearFilteredBooks
 import digital.tonima.bibliadigital.ui.bible.BibleIntent.LoadBooks
 import digital.tonima.bibliadigital.ui.bible.BibleIntent.SearchBook
@@ -255,7 +255,7 @@ fun SearchView(
 
 @Composable
 fun BookItem(
-    book: BookResponse,
+    book: Book,
     fontSize: TextUnit,
     onBookClick: () -> Unit,
 ) {

@@ -52,8 +52,12 @@ abstract class BaseViewModel<S : UiState, I : UiIntent, E : UiEvent> : ViewModel
         }
     }
 
-    protected fun setState(reduce: S.() -> S) {
-        _uiState.update { it.reduce() }
+    /**
+     * Updates the state using a pure reducer function.
+     * This is the only way to modify the state.
+     */
+    protected fun updateState(reducer: (S) -> S) {
+        _uiState.update { reducer(it) }
     }
 
     protected fun sendEvent(event: E) {

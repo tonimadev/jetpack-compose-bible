@@ -12,10 +12,14 @@ data class Book(
     val abbrev: String = "",
     @SerializedName("author")
     val author: String = "",
+    @SerializedName("chapters")
+    val chapters: Int = 0,
     @SerializedName("group")
     val group: String = "",
     @SerializedName("name")
     val name: String = "",
     @SerializedName("version")
     val version: String = "",
+    @SerializedName("testament")
+    val testament: String = "",
 )

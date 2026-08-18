@@ -7,9 +7,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import digital.tonima.bibliadigital.domain.common.constants.MAX_FONT_SIZE
 import digital.tonima.bibliadigital.domain.common.constants.MIN_FONT_SIZE
+import digital.tonima.bibliadigital.domain.core.computation.CapabilityRegistry
 import digital.tonima.bibliadigital.domain.core.exception.Failure
-import digital.tonima.bibliadigital.domain.core.extension.removeAccents
-import digital.tonima.bibliadigital.domain.model.BookResponse
+import digital.tonima.bibliadigital.domain.model.Book
 import digital.tonima.bibliadigital.domain.model.ChapterResponse
 import digital.tonima.bibliadigital.domain.model.Verse
 import digital.tonima.bibliadigital.domain.usecases.DisableShowPressAndHoldVerseTutorialUseCase
@@ -52,9 +52,14 @@ class BibleViewModel
         private val getFavoritesUseCase: GetFavoritesUseCase,
         private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
         private val ttsManager: TTSManager,
+        private val registry: CapabilityRegistry,
         @ApplicationContext private val context: Context,
     ) : BaseViewModel<BibleState, BibleIntent, BibleEvent>() {
         override fun createInitialState() = BibleState()
+
+        private fun dispatch(mutation: BibleMutation) {
+            updateState { BibleReducer.reduce(it, mutation) }
+        }
 
         init {
             sendIntent(BibleIntent.LoadBooks)
@@ -79,21 +84,13 @@ class BibleViewModel
 
             viewModelScope.launch {
                 ttsManager.isSessionActive.collect { active ->
-                    setState {
-                        copy(
-                            isSpeechEnabled = active,
-                            playingBookName = if (active) playingBookName else null,
-                            playingBookAbbrev = if (active) playingBookAbbrev else null,
-                            playingChapterId = if (active) playingChapterId else null,
-                            playingChapterQuantity = if (active) playingChapterQuantity else null,
-                        )
-                    }
+                    dispatch(BibleMutation.SpeechActiveChanged(active))
                 }
             }
 
             viewModelScope.launch {
                 ttsManager.isPaused.collect { isPaused ->
-                    setState { copy(isSpeechPaused = isPaused) }
+                    dispatch(BibleMutation.SpeechPausedChanged(isPaused))
                 }
             }
         }
@@ -101,16 +98,16 @@ class BibleViewModel
         override fun handleIntent(intent: BibleIntent) {
             when (intent) {
                 is BibleIntent.LoadBooks -> getBooks()
-                is BibleIntent.SearchBook -> searchBook(intent.query)
+                is BibleIntent.SearchBook -> dispatch(BibleMutation.SearchUpdated(intent.query))
                 is BibleIntent.LoadChapter -> getBookChapter(intent.bookName, intent.bookAbbrev, intent.chapterId)
-                is BibleIntent.UpdateLastSearch -> updateLastSearch(intent.query)
-                is BibleIntent.ClearFilteredBooks -> clearFilteredBooks()
+                is BibleIntent.UpdateLastSearch -> dispatch(BibleMutation.SearchUpdated(intent.query))
+                is BibleIntent.ClearFilteredBooks -> dispatch(BibleMutation.ClearFilteredBooks)
                 is BibleIntent.NextChapter -> nextChapter()
                 is BibleIntent.PreviousChapter -> previousChapter()
                 is BibleIntent.IncreaseFontSize -> increaseFontSize()
                 is BibleIntent.DecreaseFontSize -> decreaseFontSize()
-                is BibleIntent.SetSelectedVerse -> setSelectedVerse(intent.verse)
-                is BibleIntent.ClearSelectedVerse -> clearSelectedVerse()
+                is BibleIntent.SetSelectedVerse -> dispatch(BibleMutation.VerseSelected(intent.verse))
+                is BibleIntent.ClearSelectedVerse -> dispatch(BibleMutation.VerseSelected(null))
                 is BibleIntent.DisableTutorial -> disableTutorials()
                 is BibleIntent.LoadVersions -> getVersions()
                 is BibleIntent.ChangeVersion -> changeVersion(intent.version)
@@ -135,8 +132,9 @@ class BibleViewModel
         private fun getShowTutorialValue() {
             getStoreShowPressAndHoldVerseTutorial(
                 UseCase.None(),
+                registry,
                 viewModelScope,
-            ) { it.fold(::handleBackgroundFailure) { show -> setState { copy(showTutorial = show) } } }
+            ) { it.fold(::handleBackgroundFailure) { show -> dispatch(BibleMutation.TutorialStatus(show)) } }
         }
 
         private fun nextChapter(isAutoSpeech: Boolean = false) {
@@ -158,9 +156,10 @@ class BibleViewModel
         }
 
         private fun getBooks() {
-            setState { copy(isLoading = true) }
+            dispatch(BibleMutation.Loading)
             getBooksUseCase(
                 UseCase.None(),
+                registry,
                 viewModelScope,
             ) {
                 it.fold(
@@ -184,25 +183,16 @@ class BibleViewModel
             if (!isAutoSpeech && !isAlreadyPlayingThis) {
                 stopSpeech()
             }
-            setState { copy(isLoading = true, chapter = null, currentChapter = chapterId) }
+            dispatch(BibleMutation.Navigation(chapterId))
             getChapterUseCase(
                 GetChapterUseCase.Params(bookName, bookAbbrev, chapterId, uiState.value.selectedVersion),
+                registry,
                 viewModelScope,
             ) {
                 it.fold(
                     ::handleFailure,
-                    { response -> handleFetchBookChapterSuccess(response, isAutoSpeech) },
-                )
+                ) { response -> handleFetchBookChapterSuccess(response, isAutoSpeech) }
             }
-        }
-
-        private fun searchBook(search: String) {
-            val filtered =
-                uiState.value.books.filter {
-                    it.name.removeAccents().contains(search, true) ||
-                        it.abbrev.contains(search, true)
-                }
-            setState { copy(filteredBooks = filtered) }
         }
 
         private fun textToSpeech(
@@ -222,40 +212,29 @@ class BibleViewModel
             val quantity = uiState.value.books.find { it.abbrev == bookAbbrev }?.chapters ?: 50
 
             ttsManager.startSpeaking(context, text, bookName, chapter)
-            setState {
-                copy(
-                    isSpeechEnabled = true,
-                    isSpeechPaused = false,
-                    playingBookName = bookName,
-                    playingBookAbbrev = bookAbbrev,
-                    playingChapterId = chapter,
-                    playingChapterQuantity = quantity,
-                )
-            }
+            dispatch(
+                BibleMutation.SpeechStarted(
+                    bookName = bookName,
+                    abbrev = bookAbbrev,
+                    chapterId = chapter,
+                    quantity = quantity,
+                ),
+            )
         }
 
         private fun pauseSpeech() {
             ttsManager.pause()
-            setState { copy(isSpeechPaused = true) }
+            dispatch(BibleMutation.SpeechPausedChanged(true))
         }
 
         private fun resumeSpeech() {
             ttsManager.resume()
-            setState { copy(isSpeechPaused = false) }
+            dispatch(BibleMutation.SpeechPausedChanged(false))
         }
 
         private fun stopSpeech() {
             ttsManager.stop()
-            setState {
-                copy(
-                    isSpeechEnabled = false,
-                    isSpeechPaused = false,
-                    playingBookName = null,
-                    playingBookAbbrev = null,
-                    playingChapterId = null,
-                    playingChapterQuantity = null,
-                )
-            }
+            dispatch(BibleMutation.SpeechStopped)
         }
 
         private fun bindTTS(context: Context) {
@@ -269,29 +248,29 @@ class BibleViewModel
         private fun getFontSize() {
             getFontSizeUseCase(
                 UseCase.None(),
+                registry,
                 viewModelScope,
             ) {
                 it.fold(
                     ::handleBackgroundFailure,
-                    { size -> setState { copy(fontSize = size.sp) } },
-                )
+                ) { size -> dispatch(BibleMutation.FontSizeChanged(size.sp)) }
             }
         }
 
         private fun storeFontSize(size: Int) {
             storeFontSizeUseCase(
                 StoreFontSizeUseCase.Params(size),
+                registry,
                 viewModelScope,
             ) {
                 it.fold(
                     ::handleFailure,
-                    { Timber.i("----- Font size stored") },
-                )
+                ) { Timber.i("----- Font size stored") }
             }
         }
 
         override fun handleFailure(failure: Failure) {
-            setState { copy(isLoading = false, failure = failure) }
+            dispatch(BibleMutation.FailureOccurred(failure))
         }
 
         private fun handleBackgroundFailure(failure: Failure) {
@@ -302,24 +281,22 @@ class BibleViewModel
             chapterResponse: ChapterResponse,
             isAutoSpeech: Boolean = false,
         ) {
-            val currentText = chapterResponse.verses.joinToString(" ") { it.text }
-            setState {
-                copy(
-                    isLoading = false,
-                    chapter = chapterResponse,
-                    currentText = currentText,
-                )
-            }
+            dispatch(BibleMutation.ChapterLoaded(chapterResponse))
             saveHistory(chapterResponse)
 
             if (isAutoSpeech) {
-                textToSpeech(
-                    context,
-                    currentText,
-                    chapterResponse.book.name,
-                    chapterResponse.chapter.number,
-                )
+                handleFetchBookChapterSuccessSpeech(chapterResponse)
             }
+        }
+
+        private fun handleFetchBookChapterSuccessSpeech(chapterResponse: ChapterResponse) {
+            val currentText = chapterResponse.verses.joinToString(" ") { it.text }
+            textToSpeech(
+                context,
+                currentText,
+                chapterResponse.book.name,
+                chapterResponse.chapter.number,
+            )
         }
 
         private fun saveHistory(chapterResponse: ChapterResponse) {
@@ -334,6 +311,7 @@ class BibleViewModel
                     chapterId = chapterResponse.chapter.number,
                     chapterQuantity = quantity,
                 ),
+                registry,
                 viewModelScope,
             ) { /* ignore result */ }
         }
@@ -341,10 +319,11 @@ class BibleViewModel
         private fun loadHistory() {
             getReadingHistoryUseCase(
                 UseCase.None(),
+                registry,
                 viewModelScope,
             ) {
                 it.fold(::handleBackgroundFailure) { history ->
-                    setState { copy(history = history) }
+                    dispatch(BibleMutation.HistoryLoaded(history))
                 }
             }
         }
@@ -352,10 +331,11 @@ class BibleViewModel
         private fun loadFavorites() {
             getFavoritesUseCase(
                 UseCase.None(),
+                registry,
                 viewModelScope,
             ) {
                 it.fold(::handleBackgroundFailure) { favorites ->
-                    setState { copy(favorites = favorites) }
+                    dispatch(BibleMutation.FavoritesLoaded(favorites))
                 }
             }
         }
@@ -367,6 +347,7 @@ class BibleViewModel
         ) {
             toggleFavoriteUseCase(
                 ToggleFavoriteUseCase.Params(bookName, chapter, verse.number, verse.text),
+                registry,
                 viewModelScope,
             ) {
                 it.fold(::handleFailure) {
@@ -375,23 +356,15 @@ class BibleViewModel
             }
         }
 
-        private fun handleBooksFetchSuccess(bookResponse: List<BookResponse>) {
-            setState { copy(isLoading = false, books = bookResponse) }
-        }
-
-        private fun clearFilteredBooks() {
-            setState { copy(filteredBooks = null) }
-        }
-
-        private fun updateLastSearch(text: String) {
-            setState { copy(lastSearch = text) }
+        private fun handleBooksFetchSuccess(bookResponse: List<Book>) {
+            dispatch(BibleMutation.BooksLoaded(bookResponse))
         }
 
         private fun increaseFontSize() {
             val current = uiState.value.fontSize.value.toInt()
             if (current < MAX_FONT_SIZE) {
                 val next = current + 1
-                setState { copy(fontSize = next.sp) }
+                dispatch(BibleMutation.FontSizeChanged(next.sp))
                 storeFontSize(next)
             }
         }
@@ -400,56 +373,49 @@ class BibleViewModel
             val current = uiState.value.fontSize.value.toInt()
             if (current > MIN_FONT_SIZE) {
                 val next = current - 1
-                setState { copy(fontSize = next.sp) }
+                dispatch(BibleMutation.FontSizeChanged(next.sp))
                 storeFontSize(next)
             }
-        }
-
-        private fun setSelectedVerse(verse: Verse) {
-            setState { copy(selectedVerse = verse) }
-        }
-
-        private fun clearSelectedVerse() {
-            setState { copy(selectedVerse = null) }
         }
 
         private fun disableTutorials() {
             disableShowPressAndHoldVerseTutorialUseCase(
                 UseCase.None(),
+                registry,
                 viewModelScope,
             ) {
                 it.fold(
                     ::handleFailure,
-                ) { setState { copy(showTutorial = false) } }
+                ) { dispatch(BibleMutation.TutorialStatus(false)) }
             }
         }
 
         private fun getVersions() {
             getVersionsUseCase(
                 UseCase.None(),
+                registry,
                 viewModelScope,
             ) {
                 it.fold(
                     ::handleBackgroundFailure,
-                    { versions -> setState { copy(versions = versions) } },
-                )
+                ) { versions -> dispatch(BibleMutation.VersionsLoaded(versions)) }
             }
         }
 
         private fun getSelectedVersion() {
             getSelectedVersionUseCase(
                 UseCase.None(),
+                registry,
                 viewModelScope,
             ) {
                 it.fold(
                     ::handleBackgroundFailure,
-                    { version -> setState { copy(selectedVersion = version) } },
-                )
+                ) { version -> dispatch(BibleMutation.SelectedVersionChanged(version)) }
             }
         }
 
         private fun changeVersion(version: String) {
-            setState { copy(selectedVersion = version) }
+            dispatch(BibleMutation.SelectedVersionChanged(version))
             storeSelectedVersion(version)
             val currentChapter = uiState.value.chapter
             if (currentChapter != null) {
@@ -464,12 +430,12 @@ class BibleViewModel
         private fun storeSelectedVersion(version: String) {
             storeSelectedVersionUseCase(
                 StoreSelectedVersionUseCase.Params(version),
+                registry,
                 viewModelScope,
             ) {
                 it.fold(
                     ::handleFailure,
-                    { Timber.i("----- Selected version stored") },
-                )
+                ) { Timber.i("----- Selected version stored") }
             }
         }
     }

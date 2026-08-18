@@ -5,11 +5,14 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import digital.tonima.bibliadigital.BuildConfig
+import digital.tonima.bibliadigital.data.datastore.PreferencesDataStore
+import digital.tonima.bibliadigital.data.local.room.ChurchDao
 import digital.tonima.bibliadigital.data.remote.bible.ChurchRoomApi
 import digital.tonima.bibliadigital.domain.common.constants.BIBLE_BASE_URL
 import digital.tonima.bibliadigital.domain.common.constants.SOCKET_TIMEOUT
+import digital.tonima.bibliadigital.domain.core.computation.CapabilityRegistry
 import digital.tonima.bibliadigital.domain.core.plataform.HeaderInterceptor
-import digital.tonima.bibliadigital.domain.repository.BibleRepository
+import digital.tonima.bibliadigital.domain.core.plataform.NetworkHandler
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -35,7 +38,18 @@ class NetworkModule {
 
     @Provides
     @Singleton
-    fun provideBibleRepository(dataSource: BibleRepository.Network): BibleRepository = dataSource
+    fun provideCapabilityRegistry(
+        api: ChurchRoomApi,
+        dao: ChurchDao,
+        dataStore: PreferencesDataStore,
+        networkHandler: NetworkHandler,
+    ): CapabilityRegistry =
+        CapabilityRegistry.Builder()
+            .register(ChurchRoomApi::class.java, api)
+            .register(ChurchDao::class.java, dao)
+            .register(PreferencesDataStore::class.java, dataStore)
+            .register(NetworkHandler::class.java, networkHandler)
+            .build()
 
     private fun createClient(): OkHttpClient {
         val okHttpClientBuilder: OkHttpClient.Builder = OkHttpClient.Builder()

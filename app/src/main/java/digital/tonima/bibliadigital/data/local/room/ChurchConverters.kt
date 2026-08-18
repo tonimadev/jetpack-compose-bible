@@ -3,6 +3,7 @@ package digital.tonima.bibliadigital.data.local.room
 import androidx.room.TypeConverter
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import digital.tonima.bibliadigital.domain.model.Abbrev
 import digital.tonima.bibliadigital.domain.model.Book
 import digital.tonima.bibliadigital.domain.model.Chapter
 import digital.tonima.bibliadigital.domain.model.Verse
@@ -10,6 +11,18 @@ import java.lang.reflect.Type
 
 class ChurchConverters {
     private val gson = Gson()
+
+    @TypeConverter
+    fun abbrevToString(abbrev: Abbrev): String = gson.toJson(abbrev)
+
+    @TypeConverter
+    fun stringToAbbrev(abbrevString: String): Abbrev {
+        return try {
+            gson.fromJson(abbrevString, Abbrev::class.java) ?: Abbrev(pt = abbrevString)
+        } catch (_: Exception) {
+            Abbrev(pt = abbrevString)
+        }
+    }
 
     @TypeConverter
     fun bookToString(book: Book): String = gson.toJson(book)
