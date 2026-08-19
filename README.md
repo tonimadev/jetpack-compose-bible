@@ -41,7 +41,7 @@ The app follows a strict **MVI (Model-View-Intent)** pattern, recently refactore
 - **`BibleIntent`:** Sealed class representing user intentions (e.g., `LoadBooks`, `NextChapter`).
 - **`BibleMutation`:** Internal sealed class that bridges the gap between side-effects and state updates.
 - **`BibleReducer`:** A pure `object` that contains the synchronous logic for updating the state using `.copy()`.
-- **`StateContainer`:** A delegate that provides a standard `updateState` mechanism and event handling, ensuring all state changes are processed through the reducer without forcing class inheritance.
+- **`StateContainer`:** A delegate that provides a standard `updateState` mechanism, ensuring all state changes are processed through the reducer without forcing class inheritance.
 
 ### Benefits of Pure Reducers
 - **Predictability:** Given the same state and mutation, the output state is always identical.

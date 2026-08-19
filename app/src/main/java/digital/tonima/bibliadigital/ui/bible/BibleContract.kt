@@ -12,11 +12,11 @@ import digital.tonima.bibliadigital.domain.model.ChapterResponse
 import digital.tonima.bibliadigital.domain.model.FavoriteVerse
 import digital.tonima.bibliadigital.domain.model.Verse
 import digital.tonima.bibliadigital.domain.model.Version
-import digital.tonima.bibliadigital.ui.UiEvent
 import digital.tonima.bibliadigital.ui.UiIntent
 import digital.tonima.bibliadigital.ui.UiState
 import digital.tonima.bibliadigital.ui.bible.BibleMutation.BooksLoaded
 import digital.tonima.bibliadigital.ui.bible.BibleMutation.ChapterLoaded
+import digital.tonima.bibliadigital.ui.bible.BibleMutation.ClearFailure
 import digital.tonima.bibliadigital.ui.bible.BibleMutation.ClearFilteredBooks
 import digital.tonima.bibliadigital.ui.bible.BibleMutation.FailureOccurred
 import digital.tonima.bibliadigital.ui.bible.BibleMutation.FavoritesLoaded
@@ -100,6 +100,8 @@ sealed class BibleMutation {
     object SpeechStopped : BibleMutation()
 
     data class Navigation(val chapterId: Int) : BibleMutation()
+
+    object ClearFailure : BibleMutation()
 }
 
 object BibleReducer {
@@ -167,6 +169,7 @@ object BibleReducer {
                     playingChapterQuantity = null,
                 )
             is Navigation -> state.copy(currentChapter = mutation.chapterId, chapter = null, isLoading = true)
+            is ClearFailure -> state.copy(failure = null)
         }
     }
 }
@@ -222,8 +225,6 @@ sealed class BibleIntent : UiIntent {
     data class BindTTS(val context: Context) : BibleIntent()
 
     object UnbindTTS : BibleIntent()
-}
 
-sealed class BibleEvent : UiEvent {
-    data class ShowError(val failure: Failure) : BibleEvent()
+    object DismissError : BibleIntent()
 }

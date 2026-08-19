@@ -56,7 +56,7 @@ class BibleViewModel
         private val ttsManager: TTSManager,
         private val registry: CapabilityRegistry,
         @ApplicationContext private val context: Context,
-    ) : ViewModel(), StateContainer<BibleState, BibleEvent> by StateContainerImpl(BibleState()) {
+    ) : ViewModel(), StateContainer<BibleState> by StateContainerImpl(BibleState()) {
         private fun dispatch(mutation: BibleMutation) {
             updateState { BibleReducer.reduce(it, mutation) }
         }
@@ -126,6 +126,7 @@ class BibleViewModel
                 is BibleIntent.ResumeSpeech -> resumeSpeech()
                 is BibleIntent.BindTTS -> bindTTS(intent.context)
                 is BibleIntent.UnbindTTS -> unbindTTS()
+                is BibleIntent.DismissError -> dispatch(BibleMutation.ClearFailure)
             }
         }
 

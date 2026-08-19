@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -90,30 +91,21 @@ fun BibleApplication(viewModel: BibleViewModel) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val context = LocalContext.current
+    val noNetworkMsg = stringResource(R.string.no_network)
+    val serverErrorMsg = stringResource(R.string.server_error)
+    val unknownErrorMsg = stringResource(R.string.unknown_error)
 
-    state.failure?.let {
-        when (it) {
-            is NetworkConnection -> {
-                makeText(
-                    LocalContext.current,
-                    stringResource(R.string.no_network),
-                    Toast.LENGTH_LONG,
-                ).show()
-            }
-            is ServerError -> {
-                makeText(
-                    LocalContext.current,
-                    stringResource(R.string.server_error),
-                    Toast.LENGTH_LONG,
-                ).show()
-            }
-            else -> {
-                makeText(
-                    LocalContext.current,
-                    stringResource(R.string.unknown_error),
-                    Toast.LENGTH_LONG,
-                ).show()
-            }
+    LaunchedEffect(state.failure) {
+        state.failure?.let {
+            val message =
+                when (it) {
+                    is NetworkConnection -> noNetworkMsg
+                    is ServerError -> serverErrorMsg
+                    else -> unknownErrorMsg
+                }
+            makeText(context, message, Toast.LENGTH_LONG).show()
+            viewModel.onIntent(BibleIntent.DismissError)
         }
     }
 
