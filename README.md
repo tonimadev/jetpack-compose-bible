@@ -23,6 +23,27 @@ This project has been recently modernized to follow the latest Android developme
   - **MockK:** Comprehensive unit testing.
   - **GitHub Actions:** CI/CD pipeline for automated verification.
 
+## Modularization: Feature-based & Bridge/Impl
+
+The project has been refactored from a monolithic structure to a highly modular one. This architecture focuses on **build speed**, **separation of concerns**, and **parallel development**.
+
+### Module Types
+
+1.  **Core Modules (`:core:*`):** Provide shared functionality across the entire application.
+    -   `:core:common`: Domain models, constants, and the `Computation` engine.
+    -   `:core:database`: persistence implementation (Room & DataStore).
+    -   `:core:network`: API configuration, Retrofit, and global Interceptors.
+    -   `:core:ui`: Theme, components, and design system resources.
+2.  **Feature Modules (`:feature:*`):** Encapsulate specific business domains.
+    -   **Bridge (`:feature:[name]:bridge`):** Defines the **public API** of the feature (State, Intents, Navigation contracts). Lightweight and fast to compile.
+    -   **Impl (`:feature:[name]:impl`):** Contains the internal implementation (ViewModels, Composables, UseCases).
+3.  **App Module (`:app`):** The main entry point that wires all features together and provides the navigation host.
+
+### Bridge/Impl Pattern Benefits
+-   **Incremental Compilation:** Changes in a feature's UI or logic (`impl`) don't trigger recompilation of modules that depend on its contract (`bridge`).
+-   **Strict Boundaries:** Features only communicate through their Bridges, preventing spaghetti code and circular dependencies.
+-   **Scalability:** Independent modules allow the project to scale efficiently as more features are added.
+
 ## Architecture: MVI & Pure Reducers
 
 The app follows a strict **MVI (Model-View-Intent)** pattern, recently refactored to use **Pure Reducers**. This ensures a predictable UI state, unidirectional data flow, and high testability by separating business logic from UI state management.

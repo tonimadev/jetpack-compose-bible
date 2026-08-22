@@ -33,19 +33,22 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dagger.hilt.android.AndroidEntryPoint
 import digital.tonima.bibliadigital.R
-import digital.tonima.bibliadigital.domain.common.constants.ARG_BOOK_ABBREV
-import digital.tonima.bibliadigital.domain.common.constants.ARG_BOOK_NAME
-import digital.tonima.bibliadigital.domain.common.constants.ARG_CHAPTER_ID
-import digital.tonima.bibliadigital.domain.common.constants.ARG_CHAPTER_QUANTITY
-import digital.tonima.bibliadigital.domain.core.exception.Failure.NetworkConnection
-import digital.tonima.bibliadigital.domain.core.exception.Failure.ServerError
-import digital.tonima.bibliadigital.ui.bible.BibleIntent
-import digital.tonima.bibliadigital.ui.bible.BibleViewModel
-import digital.tonima.bibliadigital.ui.bible.books.ListBooks
-import digital.tonima.bibliadigital.ui.bible.chapters.ListChapters
-import digital.tonima.bibliadigital.ui.bible.reading.BibleReading
-import digital.tonima.bibliadigital.ui.components.MiniPlayer
-import digital.tonima.bibliadigital.ui.theme.BibliaSagradaTheme
+import digital.tonima.bibliadigital.core.common.constants.ARG_BOOK_ABBREV
+import digital.tonima.bibliadigital.core.common.constants.ARG_BOOK_NAME
+import digital.tonima.bibliadigital.core.common.constants.ARG_CHAPTER_ID
+import digital.tonima.bibliadigital.core.common.constants.ARG_CHAPTER_QUANTITY
+import digital.tonima.bibliadigital.core.common.core.exception.Failure.NetworkConnection
+import digital.tonima.bibliadigital.core.common.core.exception.Failure.ServerError
+import digital.tonima.bibliadigital.core.ui.components.MiniPlayer
+import digital.tonima.bibliadigital.core.ui.theme.BibliaSagradaTheme
+import digital.tonima.bibliadigital.feature.bible.bridge.BibleIntent
+import digital.tonima.bibliadigital.feature.bible.bridge.BibleReadingScreen
+import digital.tonima.bibliadigital.feature.bible.bridge.ListBooksScreen
+import digital.tonima.bibliadigital.feature.bible.bridge.ListChaptersScreen
+import digital.tonima.bibliadigital.feature.bible.impl.BibleViewModel
+import digital.tonima.bibliadigital.feature.bible.impl.books.ListBooks
+import digital.tonima.bibliadigital.feature.bible.impl.chapters.ListChapters
+import digital.tonima.bibliadigital.feature.bible.impl.reading.BibleReading
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {

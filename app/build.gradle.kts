@@ -138,6 +138,12 @@ dependencies {
     implementation(libs.retrofit.converter.gson)
     implementation(libs.room.ktx)
     implementation(platform(libs.androidx.compose.bom))
+    implementation(project(":core:common"))
+    implementation(project(":core:database"))
+    implementation(project(":core:network"))
+    implementation(project(":core:ui"))
+    implementation(project(":feature:bible:bridge"))
+    implementation(project(":feature:bible:impl"))
 
     ksp(libs.hilt.compiler)
     ksp(libs.room.compiler)

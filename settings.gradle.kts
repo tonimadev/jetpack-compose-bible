@@ -16,3 +16,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "Bíblia Sagrada"
 include(":app")
+include(":core:common")
+include(":core:database")
+include(":core:network")
+include(":core:ui")
+include(":feature:bible:bridge")
+include(":feature:bible:impl")
