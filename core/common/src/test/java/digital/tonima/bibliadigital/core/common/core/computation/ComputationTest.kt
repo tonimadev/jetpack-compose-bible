@@ -1,6 +1,6 @@
-package digital.tonima.bibliadigital.domain.core.computation
+package digital.tonima.bibliadigital.core.common.core.computation
 
-import digital.tonima.bibliadigital.domain.core.function.Either
+import digital.tonima.bibliadigital.core.common.core.function.Either
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals

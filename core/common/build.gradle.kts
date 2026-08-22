@@ -63,4 +63,8 @@ dependencies {
 
     ksp(libs.hilt.compiler)
     ksp(libs.room.compiler)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockk)
 }

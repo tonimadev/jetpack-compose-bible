@@ -52,4 +52,8 @@ dependencies {
     implementation(project(":core:database"))
 
     ksp(libs.hilt.compiler)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockk)
 }

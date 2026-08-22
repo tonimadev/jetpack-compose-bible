@@ -1,11 +1,10 @@
-package digital.tonima.bibliadigital.domain.usecases
+package digital.tonima.bibliadigital.feature.bible.impl
 
-import digital.tonima.bibliadigital.domain.BibleDomainEffects
-import digital.tonima.bibliadigital.domain.core.computation.CapabilityRegistry
-import digital.tonima.bibliadigital.domain.core.computation.Computation
-import digital.tonima.bibliadigital.domain.core.function.Either
-import digital.tonima.bibliadigital.domain.core.network.NetworkError
-import digital.tonima.bibliadigital.domain.model.Book
+import digital.tonima.bibliadigital.core.common.core.computation.CapabilityRegistry
+import digital.tonima.bibliadigital.core.common.core.computation.Computation
+import digital.tonima.bibliadigital.core.common.core.function.Either
+import digital.tonima.bibliadigital.core.common.core.network.NetworkError
+import digital.tonima.bibliadigital.core.common.model.Book
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi

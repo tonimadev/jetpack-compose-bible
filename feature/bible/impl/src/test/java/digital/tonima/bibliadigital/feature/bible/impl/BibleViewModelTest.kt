@@ -1,28 +1,18 @@
-package digital.tonima.bibliadigital.ui.bible
+package digital.tonima.bibliadigital.feature.bible.impl
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import digital.tonima.bibliadigital.data.datastore.ReadingHistory
-import digital.tonima.bibliadigital.domain.core.computation.CapabilityRegistry
-import digital.tonima.bibliadigital.domain.core.function.Either
-import digital.tonima.bibliadigital.domain.model.Book
-import digital.tonima.bibliadigital.domain.model.FavoriteVerse
-import digital.tonima.bibliadigital.domain.model.Verse
-import digital.tonima.bibliadigital.domain.model.Version
-import digital.tonima.bibliadigital.domain.usecases.DisableShowPressAndHoldVerseTutorialUseCase
-import digital.tonima.bibliadigital.domain.usecases.GetBooksUseCase
-import digital.tonima.bibliadigital.domain.usecases.GetChapterUseCase
-import digital.tonima.bibliadigital.domain.usecases.GetFavoritesUseCase
-import digital.tonima.bibliadigital.domain.usecases.GetFontSizeUseCase
-import digital.tonima.bibliadigital.domain.usecases.GetReadingHistoryUseCase
-import digital.tonima.bibliadigital.domain.usecases.GetSelectedVersionUseCase
-import digital.tonima.bibliadigital.domain.usecases.GetShowPressAndHoldVerseTutorialUseCase
-import digital.tonima.bibliadigital.domain.usecases.GetVersionsUseCase
-import digital.tonima.bibliadigital.domain.usecases.StoreFontSizeUseCase
-import digital.tonima.bibliadigital.domain.usecases.StoreReadingHistoryUseCase
-import digital.tonima.bibliadigital.domain.usecases.StoreSelectedVersionUseCase
-import digital.tonima.bibliadigital.domain.usecases.ToggleFavoriteUseCase
-import digital.tonima.bibliadigital.ui.bible.tts.TTSEvent
-import digital.tonima.bibliadigital.ui.bible.tts.TTSManager
+import digital.tonima.bibliadigital.core.common.core.computation.CapabilityRegistry
+import digital.tonima.bibliadigital.core.common.core.function.Either
+import digital.tonima.bibliadigital.core.common.model.Book
+import digital.tonima.bibliadigital.core.common.model.Chapter
+import digital.tonima.bibliadigital.core.common.model.ChapterResponse
+import digital.tonima.bibliadigital.core.common.model.FavoriteVerse
+import digital.tonima.bibliadigital.core.common.model.ReadingHistory
+import digital.tonima.bibliadigital.core.common.model.Verse
+import digital.tonima.bibliadigital.core.common.model.Version
+import digital.tonima.bibliadigital.feature.bible.bridge.BibleIntent
+import digital.tonima.bibliadigital.feature.bible.impl.tts.TTSEvent
+import digital.tonima.bibliadigital.feature.bible.impl.tts.TTSManager
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -193,8 +183,8 @@ class BibleViewModelTest {
             }
             coEvery { getChapterUseCase(any(), any(), any(), any()) } coAnswers {
                 // Return dummy failure to simplify test, main point is that it was called
-                lastArg<(Either<*, digital.tonima.bibliadigital.domain.model.ChapterResponse>) -> Unit>().invoke(
-                    Either.Fail(digital.tonima.bibliadigital.domain.core.exception.Failure.NetworkConnection),
+                lastArg<(Either<*, ChapterResponse>) -> Unit>().invoke(
+                    Either.Fail(digital.tonima.bibliadigital.core.common.core.exception.Failure.NetworkConnection),
                 )
             }
 
@@ -282,15 +272,15 @@ class BibleViewModelTest {
     fun `when TTSManager emits NextChapter should load next chapter`() =
         runTest {
             val book = Book(name = "Genesis", abbrev = "gn")
-            val chapter = digital.tonima.bibliadigital.domain.model.Chapter(number = 1)
+            val chapter = Chapter(number = 1)
             val chapterResponse =
-                digital.tonima.bibliadigital.domain.model.ChapterResponse(
+                ChapterResponse(
                     book = book,
                     chapter = chapter,
                 )
             // Inject initial chapter state
             coEvery { getChapterUseCase(any(), any(), any(), any()) } coAnswers {
-                lastArg<(Either<*, digital.tonima.bibliadigital.domain.model.ChapterResponse>) -> Unit>().invoke(
+                lastArg<(Either<*, ChapterResponse>) -> Unit>().invoke(
                     Either.Success(chapterResponse),
                 )
             }

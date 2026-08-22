@@ -1,9 +1,9 @@
-package digital.tonima.bibliadigital.data.remote.bible
+package digital.tonima.bibliadigital.core.network
 
-import digital.tonima.bibliadigital.domain.core.function.Either
-import digital.tonima.bibliadigital.domain.model.Abbrev
-import digital.tonima.bibliadigital.domain.model.BaseResponse
-import digital.tonima.bibliadigital.domain.model.BookResponse
+import digital.tonima.bibliadigital.core.common.core.function.Either
+import digital.tonima.bibliadigital.core.common.model.Abbrev
+import digital.tonima.bibliadigital.core.common.model.BaseResponse
+import digital.tonima.bibliadigital.core.common.model.BookResponse
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
