@@ -56,7 +56,6 @@ import digital.tonima.bibliadigital.core.ui.components.Loading
 import digital.tonima.bibliadigital.feature.bible.bridge.BibleIntent.ClearFilteredBooks
 import digital.tonima.bibliadigital.feature.bible.bridge.BibleIntent.LoadBooks
 import digital.tonima.bibliadigital.feature.bible.bridge.BibleIntent.SearchBook
-import digital.tonima.bibliadigital.feature.bible.bridge.BibleIntent.UpdateLastSearch
 import digital.tonima.bibliadigital.feature.bible.impl.BibleViewModel
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -85,12 +84,10 @@ fun ListBooks(
                 SearchView(
                     state = textState,
                     onSearch = { query ->
-                        viewModel.onIntent(UpdateLastSearch(query))
                         viewModel.onIntent(SearchBook(query))
                     },
                     onDeleteClick = {
                         textState.value = TextFieldValue("")
-                        viewModel.onIntent(UpdateLastSearch(""))
                         viewModel.onIntent(SearchBook(""))
                         viewModel.onIntent(ClearFilteredBooks)
                     },

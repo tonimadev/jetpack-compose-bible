@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -39,8 +38,10 @@ import digital.tonima.bibliadigital.core.common.constants.ARG_CHAPTER_ID
 import digital.tonima.bibliadigital.core.common.constants.ARG_CHAPTER_QUANTITY
 import digital.tonima.bibliadigital.core.common.core.exception.Failure.NetworkConnection
 import digital.tonima.bibliadigital.core.common.core.exception.Failure.ServerError
+import digital.tonima.bibliadigital.core.ui.LaunchedUiEffectHandler
 import digital.tonima.bibliadigital.core.ui.components.MiniPlayer
 import digital.tonima.bibliadigital.core.ui.theme.BibliaSagradaTheme
+import digital.tonima.bibliadigital.feature.bible.bridge.BibleEffect
 import digital.tonima.bibliadigital.feature.bible.bridge.BibleIntent
 import digital.tonima.bibliadigital.feature.bible.bridge.BibleReadingScreen
 import digital.tonima.bibliadigital.feature.bible.bridge.ListBooksScreen
@@ -99,16 +100,20 @@ fun BibleApplication(viewModel: BibleViewModel) {
     val serverErrorMsg = stringResource(R.string.server_error)
     val unknownErrorMsg = stringResource(R.string.unknown_error)
 
-    LaunchedEffect(state.failure) {
-        state.failure?.let {
-            val message =
-                when (it) {
-                    is NetworkConnection -> noNetworkMsg
-                    is ServerError -> serverErrorMsg
-                    else -> unknownErrorMsg
-                }
-            makeText(context, message, Toast.LENGTH_LONG).show()
-            viewModel.onIntent(BibleIntent.DismissError)
+    LaunchedUiEffectHandler(
+        effectFlow = viewModel.effect,
+        onConsume = { viewModel.onIntent(BibleIntent.ConsumeEffect) },
+    ) { effect ->
+        when (effect) {
+            is BibleEffect.ShowFailure -> {
+                val message =
+                    when (effect.failure) {
+                        is NetworkConnection -> noNetworkMsg
+                        is ServerError -> serverErrorMsg
+                        else -> unknownErrorMsg
+                    }
+                makeText(context, message, Toast.LENGTH_LONG).show()
+            }
         }
     }
 

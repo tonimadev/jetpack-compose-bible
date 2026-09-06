@@ -56,6 +56,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -108,7 +109,9 @@ fun BibleReading(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val showBottomBar = remember { mutableStateOf(true) }
-    val pagerState = rememberPagerState(initialPage = chapterId - 1) { chapterQuantity }
+    val pagerState = key(bookName, bookAbbrev) {
+        rememberPagerState(initialPage = chapterId - 1) { chapterQuantity }
+    }
     val sheetState = rememberModalBottomSheetState()
     var showSheet by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -135,7 +138,7 @@ fun BibleReading(
         }
 
     // Load initial chapter and react to page changes
-    LaunchedEffect(pagerState.currentPage) {
+    LaunchedEffect(bookName, bookAbbrev, pagerState.currentPage) {
         viewModel.onIntent(LoadChapter(bookName, bookAbbrev, pagerState.currentPage + 1))
     }
 

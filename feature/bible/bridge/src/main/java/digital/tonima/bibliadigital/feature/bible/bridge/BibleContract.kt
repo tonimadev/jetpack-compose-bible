@@ -16,8 +16,8 @@ import digital.tonima.bibliadigital.core.ui.UiIntent
 import digital.tonima.bibliadigital.core.ui.UiState
 import digital.tonima.bibliadigital.feature.bible.bridge.BibleMutation.BooksLoaded
 import digital.tonima.bibliadigital.feature.bible.bridge.BibleMutation.ChapterLoaded
-import digital.tonima.bibliadigital.feature.bible.bridge.BibleMutation.ClearFailure
 import digital.tonima.bibliadigital.feature.bible.bridge.BibleMutation.ClearFilteredBooks
+import digital.tonima.bibliadigital.feature.bible.bridge.BibleMutation.ConsumeEffect
 import digital.tonima.bibliadigital.feature.bible.bridge.BibleMutation.FailureOccurred
 import digital.tonima.bibliadigital.feature.bible.bridge.BibleMutation.FontSizeChanged
 import digital.tonima.bibliadigital.feature.bible.bridge.BibleMutation.HistoryLoaded
@@ -32,12 +32,15 @@ import digital.tonima.bibliadigital.feature.bible.bridge.BibleMutation.SpeechSto
 import digital.tonima.bibliadigital.feature.bible.bridge.BibleMutation.TutorialStatus
 import digital.tonima.bibliadigital.feature.bible.bridge.BibleMutation.VerseSelected
 import digital.tonima.bibliadigital.feature.bible.bridge.BibleMutation.VersionsLoaded
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 @Immutable
 data class BibleState(
-    val books: List<Book> = emptyList(),
-    val filteredBooks: List<Book>? = null,
-    val versions: List<Version> = emptyList(),
+    val books: ImmutableList<Book> = persistentListOf(),
+    val filteredBooks: ImmutableList<Book>? = null,
+    val versions: ImmutableList<Version> = persistentListOf(),
     val selectedVersion: String = "nvi",
     val chapter: ChapterResponse? = null,
     val fontSize: TextUnit = 16.sp,
@@ -53,10 +56,14 @@ data class BibleState(
     val playingChapterQuantity: Int? = null,
     val showTutorial: Boolean = true,
     val selectedVerse: Verse? = null,
-    val failure: Failure? = null,
+    val effect: BibleEffect? = null,
     val history: ReadingHistory? = null,
-    val favorites: List<FavoriteVerse> = emptyList(),
+    val favorites: ImmutableList<FavoriteVerse> = persistentListOf(),
 ) : UiState
+
+sealed interface BibleEffect {
+    data class ShowFailure(val failure: Failure) : BibleEffect
+}
 
 sealed class BibleMutation {
     object Loading : BibleMutation()
@@ -100,7 +107,7 @@ sealed class BibleMutation {
 
     data class Navigation(val chapterId: Int) : BibleMutation()
 
-    object ClearFailure : BibleMutation()
+    object ConsumeEffect : BibleMutation()
 }
 
 object BibleReducer {
@@ -109,8 +116,8 @@ object BibleReducer {
         mutation: BibleMutation,
     ): BibleState {
         return when (mutation) {
-            is Loading -> state.copy(isLoading = true, failure = null)
-            is BooksLoaded -> state.copy(isLoading = false, books = mutation.books)
+            is Loading -> state.copy(isLoading = true, effect = null)
+            is BooksLoaded -> state.copy(isLoading = false, books = mutation.books.toImmutableList())
             is ChapterLoaded -> {
                 val currentText = mutation.chapter.verses.joinToString(" ") { it.text }
                 state.copy(
@@ -127,7 +134,7 @@ object BibleReducer {
                         state.books.filter {
                             it.name.removeAccents().contains(mutation.query, true) ||
                                 it.abbrev.contains(mutation.query, true)
-                        }
+                        }.toImmutableList()
                     }
                 state.copy(lastSearch = mutation.query, filteredBooks = filtered)
             }
@@ -135,11 +142,11 @@ object BibleReducer {
             is FontSizeChanged -> state.copy(fontSize = mutation.fontSize)
             is VerseSelected -> state.copy(selectedVerse = mutation.verse)
             is TutorialStatus -> state.copy(showTutorial = mutation.show)
-            is VersionsLoaded -> state.copy(versions = mutation.versions)
+            is VersionsLoaded -> state.copy(versions = mutation.versions.toImmutableList())
             is SelectedVersionChanged -> state.copy(selectedVersion = mutation.version)
             is HistoryLoaded -> state.copy(history = mutation.history)
-            is BibleMutation.FavoritesLoaded -> state.copy(favorites = mutation.favorites)
-            is FailureOccurred -> state.copy(isLoading = false, failure = mutation.failure)
+            is BibleMutation.FavoritesLoaded -> state.copy(favorites = mutation.favorites.toImmutableList())
+            is FailureOccurred -> state.copy(isLoading = false, effect = BibleEffect.ShowFailure(mutation.failure))
             is SpeechActiveChanged ->
                 state.copy(
                     isSpeechEnabled = mutation.isActive,
@@ -168,7 +175,7 @@ object BibleReducer {
                     playingChapterQuantity = null,
                 )
             is Navigation -> state.copy(currentChapter = mutation.chapterId, chapter = null, isLoading = true)
-            is ClearFailure -> state.copy(failure = null)
+            is ConsumeEffect -> state.copy(effect = null)
         }
     }
 }
@@ -179,8 +186,6 @@ sealed class BibleIntent : UiIntent {
     data class SearchBook(val query: String) : BibleIntent()
 
     data class LoadChapter(val bookName: String, val bookAbbrev: String, val chapterId: Int) : BibleIntent()
-
-    data class UpdateLastSearch(val query: String) : BibleIntent()
 
     object ClearFilteredBooks : BibleIntent()
 
@@ -225,5 +230,5 @@ sealed class BibleIntent : UiIntent {
 
     object UnbindTTS : BibleIntent()
 
-    object DismissError : BibleIntent()
+    object ConsumeEffect : BibleIntent()
 }

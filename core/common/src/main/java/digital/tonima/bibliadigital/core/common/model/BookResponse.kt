@@ -13,7 +13,7 @@ data class BookResponse(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
     @SerializedName("abbrev")
-    val abbrev: Abbrev = Abbrev(),
+    val abbrev: String = "",
     @SerializedName("author")
     val author: String = "",
     @SerializedName("chapters")
@@ -28,7 +28,7 @@ data class BookResponse(
     override fun toDomain() =
         Book(
             id = id,
-            abbrev = abbrev.pt,
+            abbrev = abbrev,
             author = author,
             chapters = chapters,
             group = group,

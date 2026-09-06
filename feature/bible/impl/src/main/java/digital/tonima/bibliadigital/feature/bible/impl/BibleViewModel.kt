@@ -21,6 +21,8 @@ import digital.tonima.bibliadigital.feature.bible.bridge.BibleReducer
 import digital.tonima.bibliadigital.feature.bible.bridge.BibleState
 import digital.tonima.bibliadigital.feature.bible.impl.tts.TTSEvent
 import digital.tonima.bibliadigital.feature.bible.impl.tts.TTSManager
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
@@ -47,6 +49,8 @@ class BibleViewModel
         private val registry: CapabilityRegistry,
         @ApplicationContext private val context: Context,
     ) : ViewModel(), StateContainer<BibleState> by StateContainerImpl(BibleState()) {
+        val effect = uiState.map { it.effect }.distinctUntilChanged()
+
         private fun dispatch(mutation: BibleMutation) {
             updateState { BibleReducer.reduce(it, mutation) }
         }
@@ -90,7 +94,6 @@ class BibleViewModel
                 is BibleIntent.LoadBooks -> getBooks()
                 is BibleIntent.SearchBook -> dispatch(BibleMutation.SearchUpdated(intent.query))
                 is BibleIntent.LoadChapter -> getBookChapter(intent.bookName, intent.bookAbbrev, intent.chapterId)
-                is BibleIntent.UpdateLastSearch -> dispatch(BibleMutation.SearchUpdated(intent.query))
                 is BibleIntent.ClearFilteredBooks -> dispatch(BibleMutation.ClearFilteredBooks)
                 is BibleIntent.NextChapter -> nextChapter()
                 is BibleIntent.PreviousChapter -> previousChapter()
@@ -116,7 +119,7 @@ class BibleViewModel
                 is BibleIntent.ResumeSpeech -> resumeSpeech()
                 is BibleIntent.BindTTS -> bindTTS(intent.context)
                 is BibleIntent.UnbindTTS -> unbindTTS()
-                is BibleIntent.DismissError -> dispatch(BibleMutation.ClearFailure)
+                is BibleIntent.ConsumeEffect -> dispatch(BibleMutation.ConsumeEffect)
             }
         }
 

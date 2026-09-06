@@ -40,9 +40,9 @@ class BibleDomainEffects
                     val enriched =
                         cached.map { dto ->
                             val abbrevStr = abbrevs.firstOrNull { it.bookName == dto.name }?.abbrev
-                            val count = BIBLE_CHAPTERS_COUNT[(abbrevStr ?: dto.abbrev.pt).lowercase()] ?: dto.chapters
+                            val count = BIBLE_CHAPTERS_COUNT[(abbrevStr ?: dto.abbrev).lowercase()] ?: dto.chapters
                             dto.copy(
-                                abbrev = dto.abbrev.copy(pt = abbrevStr ?: dto.abbrev.pt),
+                                abbrev = abbrevStr ?: dto.abbrev,
                                 chapters = count,
                             ).toDomain()
                         }
@@ -57,13 +57,13 @@ class BibleDomainEffects
                                 val dtos = result.b
                                 val enrichedDtos =
                                     dtos.map { dto ->
-                                        val count = BIBLE_CHAPTERS_COUNT[dto.abbrev.pt.lowercase()] ?: dto.chapters
+                                        val count = BIBLE_CHAPTERS_COUNT[dto.abbrev.lowercase()] ?: dto.chapters
                                         dto.copy(chapters = count)
                                     }
                                 dao.insertAllBooks(enrichedDtos)
                                 val abbrevs =
                                     enrichedDtos.map {
-                                        AbbrevRoomModel(bookName = it.name, abbrev = it.abbrev.pt)
+                                        AbbrevRoomModel(bookName = it.name, abbrev = it.abbrev)
                                     }
                                 dao.insertAllAbbrevs(abbrevs)
                                 Success(enrichedDtos.map { it.toDomain() })

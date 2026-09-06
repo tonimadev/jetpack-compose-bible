@@ -19,6 +19,7 @@ android {
 
 dependencies {
     implementation(libs.androidx.compose.ui)
+    implementation(libs.kotlinx.collections.immutable)
     implementation(platform(libs.androidx.compose.bom))
     implementation(project(":core:common"))
     implementation(project(":core:ui"))
